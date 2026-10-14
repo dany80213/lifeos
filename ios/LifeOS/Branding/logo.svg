@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3D8BFF"/>
+      <stop offset="1" stop-color="#7B4DE0"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- segno in vetro: corpo semitrasparente + bordo luminoso -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M369 246 V737 H696" stroke="url(#shine)" stroke-width="118"/>
+    <path d="M369 246 V737 H696" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="118" stroke-dasharray="0 0"/>
+  </g>
+  <circle cx="696" cy="307" r="72" fill="url(#shine)"/>
+  <circle cx="696" cy="307" r="72" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4"/>
+</svg>

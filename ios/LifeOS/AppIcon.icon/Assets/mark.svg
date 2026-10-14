@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- LifeOS: una "L" con un punto — la vita (life) che si appoggia sul sistema (OS). Solo il segno, senza sfondo. -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="118" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M369 246 V737 H696"/>
+  </g>
+  <circle cx="696" cy="307" r="72" fill="#FFFFFF"/>
+</svg>
