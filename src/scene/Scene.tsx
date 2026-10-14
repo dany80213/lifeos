@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   EffectComposer,
   Bloom,
@@ -192,14 +192,58 @@ function Rig() {
   )
 }
 
+/**
+ * Bloom and the additive core render every frame whether or not anyone is
+ * looking — r3f's default frameloop never checks. That is the whole reactor
+ * running full tilt behind a background tab, which is silent, invisible, and
+ * still costs the GPU exactly what a foreground frame costs. Tracking
+ * document.visibilityState and switching the loop to 'never' while hidden
+ * gives that back for free: nothing paints while hidden, so nothing is lost.
+ */
+function useForegroundOnly() {
+  const [visible, setVisible] = useState(() => !document.hidden)
+  useEffect(() => {
+    const onChange = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', onChange)
+    return () => document.removeEventListener('visibilitychange', onChange)
+  }, [])
+  return visible
+}
+
+/** Frames drawn per second while the tab is foregrounded. */
+const TARGET_FPS = 30
+
+/**
+ * 'always' ties the render rate to the display's own refresh rate — 60Hz,
+ * 120Hz on a ProMotion panel, whatever the monitor offers — which is far more
+ * than this scene's slow drifts and lerps need to read as smooth. 'demand'
+ * plus a fixed-interval invalidate() decouples the two: the scene redraws on
+ * our clock, not the display's. r3f's frame delta is still real elapsed
+ * time, so every animation in Rig keeps its actual speed — it is just
+ * sampled less often.
+ */
+function FrameLimiter({ active }: { active: boolean }) {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    if (!active) return
+    invalidate()
+    const id = setInterval(invalidate, 1000 / TARGET_FPS)
+    return () => clearInterval(id)
+  }, [active, invalidate])
+  return null
+}
+
 export function Scene() {
+  const visible = useForegroundOnly()
   return (
     <Canvas
       className="scene"
       camera={{ position: [0, 0, 6.2], fov: 45 }}
       gl={{ antialias: true, alpha: true }}
-      dpr={[1, 2]}
+      dpr={1}
+      frameloop="demand"
     >
+      <FrameLimiter active={visible} />
       <Rig />
       {/*
         multisampling={0} on purpose. The default is 8, which allocates a
@@ -219,13 +263,15 @@ export function Scene() {
       <EffectComposer multisampling={0}>
         {/* Bloom is what turns additive lines into "hologram". */}
         <Bloom
-          intensity={1.15}
+          intensity={0.95}
           // A higher threshold keeps the mid-tones intact so the orb doesn't
           // flatten into a solid white disc.
           luminanceThreshold={0.22}
           luminanceSmoothing={0.85}
-          mipmapBlur
-          radius={0.72}
+          // mipmapBlur built a full mip chain every pass for a softer falloff
+          // than this scene needs — the single-pass kernel below reads as the
+          // same glow at a fraction of the GPU cost.
+          radius={0.6}
         />
         <ChromaticAberration
           offset={new THREE.Vector2(0.0009, 0.0012)}
