@@ -27,6 +27,106 @@ import { readFile, realpath, stat } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
 import { openRemote, proxyError, vetTarget, PROXY_UA } from './net.mjs'
 import { probeUrl, renderPage } from './page.mjs'
+import {
+  SESSION_COOKIE,
+  clearSessionCookieHeader,
+  createSession,
+  parseCookies,
+  parseFormBody,
+  renderLoginPage,
+  renderPasskeysPage,
+  sessionCookieHeader,
+  verifyPassword,
+  verifySession,
+} from './auth.mjs'
+import {
+  authenticationOptions,
+  authenticationVerify,
+  hasPasskeys,
+  listPasskeys,
+  registrationOptions,
+  registrationVerify,
+  removePasskey,
+} from './passkeys.mjs'
+import { lifeosFileFor, serveLifeosFile } from './lifeos.mjs'
+import { listAutomations, setAutomationEnabled } from './lifeos-automations.mjs'
+import { getBriefing } from './lifeos-briefing.mjs'
+import { currentWeekSummary, formatWeekSummary, recentWeekSummaries } from './lifeos-review.mjs'
+import { lifeosCronServer } from './lifeos-cron.mjs'
+import {
+  addAccount, addAsset, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
+  clearFatsecretAuth, completeReminder, getFatsecretAuth, getFitnessTrend, getSettings, getStore, importFatsecretEntries,
+  markMealSynced, setFatsecretAuth, setFitnessTrend, setHealthSnapshot, summarizeMealsForToday, updateSettings,
+  removeAccount, removeAsset, removeAssetLot, removeHabit, removeLiability, removeRecurringBuy, removeTransaction, removeWorkout,
+  updateAccount, updateHabit, updateLiability, updateRecurringBuy, updateWorkout,
+} from './lifeos-store.mjs'
+import { lookupDetails, lookupHistory, lookupPrices } from './market-prices.mjs'
+import { startRecurringBuyScheduler } from './recurring-buys.mjs'
+import { listCalendarColors, listCalendarNames, listEvents } from './lifeos-caldav.mjs'
+import { fetchCompiti, fetchVerifiche, startVerificheSyncScheduler } from './lifeos-didup.mjs'
+import { ActionValidationError, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
+import { FatSecretError, getFoodDetail, searchFoods } from './lifeos-fatsecret.mjs'
+import {
+  authorizeUrl, createFoodEntry, FatSecretDiaryError, getAccessToken, getFoodEntries,
+  getRequestToken, localDateInt, mealBucketFor,
+} from './lifeos-fatsecret-diary.mjs'
+
+/**
+ * Load JARVIS_* and ELEVENLABS_API_KEY from .env.local into process.env,
+ * same as the frontend gets its VITE_* variables from Vite. Values already
+ * set in the shell win, so `FOO=bar npm run bridge` still overrides the file.
+ *
+ * Hand-rolled instead of a dotenv dependency: this is the one place the
+ * bridge needs it, and the format is just KEY=VALUE lines.
+ */
+function loadEnvLocal() {
+  let text
+  try {
+    text = readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
+  } catch {
+    return
+  }
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq === -1) continue
+    const key = trimmed.slice(0, eq).trim()
+    if (key in process.env) continue
+    let value = trimmed.slice(eq + 1).trim()
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+    process.env[key] = value
+  }
+}
+loadEnvLocal()
+
+// Holds the one in-flight FatSecret OAuth1 request token between
+// /api/lifeos-fatsecret-connect (step 1) and /api/lifeos-fatsecret-callback
+// (step 3) — a plain variable is enough since this is a single-user server
+// and the whole dance takes seconds, not a store that needs to survive a
+// restart.
+let pendingFatsecretRequest = null
+
+/**
+ * Whatever host:port the browser used to reach us — the callback only needs
+ * to be reachable by that same browser, on the same path it already used.
+ * Behind the nginx reverse proxy, plain `Host` has had its port stripped by
+ * nginx's $host (that's nginx's own variable, not a Node quirk) — prefer
+ * X-Forwarded-Host ($http_host, port included) when the proxy sends it.
+ * Without this, a callback built from the bare Host silently defaults to
+ * :443, which nothing listens on here (the real port is :8444) — the
+ * browser then just hangs until it times out, not a clean error.
+ */
+function publicOriginFor(req) {
+  const proto = req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')
+  const host = req.headers['x-forwarded-host'] || req.headers.host
+  return `${proto}://${host}`
+}
 
 const PORT = Number(process.env.JARVIS_BRIDGE_PORT ?? 8787)
 
@@ -74,19 +174,207 @@ const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const isDevPort = (port) =>
   (port >= 5173 && port <= 5199) || (port >= 4173 && port <= 4199)
 
-function originAllowed(origin) {
-  if (!origin) return ALLOW_NO_ORIGIN
-  if (EXTRA_ORIGINS.has(origin.replace(/\/+$/, ''))) return true
+function isLocalDevOrigin(origin) {
+  if (!origin) return true
   let url
   try {
     url = new URL(origin)
   } catch {
     return false
   }
-  if (url.protocol !== 'http:') return false
-  if (!LOCAL_HOSTS.has(url.hostname)) return false
-  return isDevPort(Number(url.port))
+  return url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname) && isDevPort(Number(url.port))
 }
+
+function originAllowed(origin) {
+  if (!origin) return ALLOW_NO_ORIGIN
+  if (EXTRA_ORIGINS.has(origin.replace(/\/+$/, ''))) return true
+  return isLocalDevOrigin(origin)
+}
+
+/**
+ * LifeOS login, for the public pages served alongside the bridge (see
+ * lifeos.mjs and the routes below). Configured — username, a scrypt hash from
+ * `node scripts/lifeos-password.mjs`, and a random session secret — only on a
+ * deployment that actually serves those pages; local desktop use needs none
+ * of this and keeps working exactly as before.
+ *
+ * Any origin reaching this bridge that ISN'T local dev (i.e. one explicitly
+ * added to JARVIS_ALLOWED_ORIGINS, such as a public domain) must additionally
+ * carry a valid session cookie — for both the LifeOS page/API routes and the
+ * WebSocket upgrade itself. Origin checking alone stops being a real gate the
+ * moment the origin is a public URL: anyone who has it has a "valid" Origin.
+ */
+const LIFEOS_USERNAME = process.env.LIFEOS_USERNAME ?? null
+const LIFEOS_PASSWORD_HASH = process.env.LIFEOS_PASSWORD_HASH ?? null
+const LIFEOS_SESSION_SECRET = process.env.LIFEOS_SESSION_SECRET ?? null
+const LIFEOS_AUTH_CONFIGURED = Boolean(
+  LIFEOS_USERNAME && LIFEOS_PASSWORD_HASH && LIFEOS_SESSION_SECRET,
+)
+
+function sessionUserFor(req) {
+  if (!LIFEOS_AUTH_CONFIGURED) return null
+  const cookies = parseCookies(req.headers.cookie)
+  return verifySession(LIFEOS_SESSION_SECRET, cookies[SESSION_COOKIE])
+}
+
+/** Whether this request/connection needs a valid LifeOS session on top of Origin. */
+function requiresSession(origin) {
+  return LIFEOS_AUTH_CONFIGURED && !isLocalDevOrigin(origin)
+}
+
+/**
+ * Path prefix the LifeOS app is mounted under, e.g. "/lifeos" — set this when
+ * nginx (or whatever's in front) forwards a subpath verbatim rather than being
+ * the only thing on its port. Empty by default, which is exactly today's
+ * unprefixed local-dev behavior. No trailing slash.
+ */
+const BASE_PATH = (process.env.LIFEOS_BASE_PATH ?? '').trim().replace(/\/+$/, '')
+/** Keeps only the known profile keys with the right shape; anything else is dropped. */
+function sanitizeProfile(current = {}, incoming = {}) {
+  const next = { ...current }
+  if (incoming.theme === 'light' || incoming.theme === 'dark') next.theme = incoming.theme
+  if (incoming.sectionAI && typeof incoming.sectionAI === 'object') {
+    const clean = {}
+    for (const [k, v] of Object.entries(incoming.sectionAI)) {
+      if (/^[a-z]{2,20}$/.test(k) && typeof v === 'string' && v.length <= 40) clean[k] = v
+    }
+    next.sectionAI = { ...(current.sectionAI ?? {}), ...clean }
+  }
+  if (Array.isArray(incoming.visibleCalendars)) {
+    next.visibleCalendars = incoming.visibleCalendars.filter((n) => typeof n === 'string').slice(0, 50)
+  } else if (incoming.visibleCalendars === null) {
+    delete next.visibleCalendars
+  }
+  // Personal details (the Profilo form) and the profile photo, set from the iOS app or the web.
+  if (incoming.personal && typeof incoming.personal === 'object') {
+    const clean = { ...(current.personal ?? {}) }
+    for (const k of ['nome', 'cognome', 'email', 'telefono', 'citta', 'nascita', 'ruolo']) {
+      if (typeof incoming.personal[k] === 'string') clean[k] = incoming.personal[k].slice(0, 120)
+    }
+    next.personal = clean
+  }
+  if (incoming.photo === null) {
+    delete next.photo
+  } else if (typeof incoming.photo === 'string' && /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(incoming.photo) && incoming.photo.length <= 250_000) {
+    next.photo = incoming.photo
+  }
+  next.updatedAtIso = new Date().toISOString()
+  return next
+}
+
+const LOGIN_PATH = `${BASE_PATH}/login`
+const LOGOUT_PATH = `${BASE_PATH}/logout`
+const WS_PATH = `${BASE_PATH}/ws`
+
+/**
+ * A local, offline model (Qwen2.5-3B-Instruct, served by llama.cpp's
+ * llama-server with --jinja for its native tool-calling template) a LifeOS
+ * section can be assigned instead of the Claude Agent SDK session — see
+ * Profilo's "ASSISTENTE PER SEZIONE" and web/lifeos/jarvis-client.js. Unlike
+ * the Claude path, this one CAN act — see runLocalModel and lifeos-tools.mjs
+ * — but only within the small, fixed set of LifeOS actions, never MCP/Bash/
+ * Chrome/camera. Unset means the option isn't offered.
+ */
+const QWEN_URL = process.env.QWEN_URL || null
+const QWEN_API_KEY = process.env.QWEN_API_KEY || null
+
+/**
+ * Google Gemini, offered the same way as Qwen above — a LifeOS section can
+ * be assigned it instead of the Claude Agent SDK session (see Profilo's
+ * "ASSISTENTE PER SEZIONE"), notably the Finanze "Investimenti" tab, which
+ * wants a plain analysis voice rather than the SDK's tool-using one. Unlike
+ * QWEN_URL/QWEN_API_KEY this key is never an env var: it's typed into
+ * Profilo and read from lifeos-store.mjs's settings on every call, so it
+ * can be changed from the page without restarting the bridge.
+ */
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+
+/**
+ * One-shot, non-streaming Gemini call — the same generateContent request
+ * runGeminiModel makes for the chat sections, pulled out standalone because
+ * TREND IA's refresh (below) needs it from a plain HTTP route, outside any
+ * WebSocket connection's turn-sending machinery.
+ */
+async function callGeminiOnce(systemText, userText, geminiApiKey) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(30_000),
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemText }] },
+        contents: [{ role: 'user', parts: [{ text: userText }] }],
+      }),
+    },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error?.message || `Gemini ha risposto ${res.status}.`)
+  }
+  const data = await res.json()
+  return data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || ''
+}
+
+/**
+ * TREND IA's few lines of insight — built from real recent health snapshots
+ * and workouts (never invented), via Gemini. Called by the
+ * /api/lifeos-fitness-trend route below, which caches the result in the
+ * store so this only actually runs once a calendar day unless the ↻ button
+ * forces it.
+ */
+async function generateFitnessTrend() {
+  const { geminiApiKey } = await getSettings()
+  if (!geminiApiKey) {
+    throw new Error('La chiave API di Gemini non è configurata: aggiungila dal tuo Profilo.')
+  }
+  const store = await getStore()
+  const healthDates = Object.keys(store.health).sort().slice(-14)
+  const healthLines = healthDates.map((d) => {
+    const h = store.health[d]
+    const parts = []
+    if (typeof h.weight === 'number') parts.push(`peso=${h.weight}kg`)
+    if (typeof h.sleepHours === 'number') parts.push(`sonno=${h.sleepHours}h`)
+    if (typeof h.avgHr === 'number') parts.push(`bpm=${h.avgHr}`)
+    if (typeof h.kcalBurned === 'number') parts.push(`kcal=${h.kcalBurned}`)
+    return `${d}: ${parts.join(', ') || '(nessun dato)'}`
+  })
+  const since = new Date()
+  since.setDate(since.getDate() - 14)
+  const sinceIso = since.toISOString().slice(0, 10)
+  const workoutLines = store.workouts
+    .filter((w) => w.date >= sinceIso)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((w) => {
+      const ex = w.exercises.map((e) => `${e.name} ${e.sets}${e.load ? ' @' + e.load : ''}`).join(', ')
+      return `${w.date} ${w.type} "${w.title}" (${w.durationMinutes} min)${ex ? ' - ' + ex : ''}`
+    })
+
+  const prompt =
+    `Dati salute ultimi 14 giorni:\n${healthLines.length ? healthLines.join('\n') : '(nessun dato)'}\n\n` +
+    `Allenamenti ultimi 14 giorni:\n${workoutLines.length ? workoutLines.join('\n') : '(nessun allenamento registrato)'}\n\n` +
+    'Scrivi da 2 a 3 frasi brevi in italiano, una per riga, senza numerazione, markdown o elenchi puntati, ' +
+    'che evidenzino i trend più rilevanti in questi dati (andamento del peso, qualità del sonno, costanza e ' +
+    'intensità degli allenamenti). Se i dati sono insufficienti per un trend reale, dillo in una sola frase ' +
+    'invece di inventare un andamento che i dati non mostrano.'
+
+  const raw = await callGeminiOnce(
+    'Sei un assistente che analizza dati di salute e allenamento reali e riporta solo quello che i dati ' +
+      'mostrano, senza inventare né arrotondare in modo fuorviante.',
+    prompt,
+    geminiApiKey,
+  )
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 4)
+  return setFitnessTrend(lines.length ? lines : ['Dati insufficienti per un trend in questo momento.'])
+}
+
+/**
+ * The bearer key an iOS Shortcut presents to POST a day's Health snapshot —
+ * see the /api/health-import route below. Not the session cookie: a
+ * Shortcut's "Get Contents of URL" action can set a header, not hold a
+ * browser session, so this is its own, separate secret.
+ */
+const HEALTH_IMPORT_KEY = process.env.HEALTH_IMPORT_KEY || null
 
 /**
  * Voice is a bad interface for a confirmation dialog: there is no window to
@@ -961,6 +1249,697 @@ const handleRequest = async (req, res) => {
     }
   }
 
+  // --- Passkeys (WebAuthn) ------------------------------------------------
+  // A second way to sign in. login-* are public (that is the point); everything else needs the session.
+  // The password login above stays valid, so a lost device never locks the owner out.
+  {
+    const pkPath = new URL(req.url, 'http://x').pathname
+    const pkPrefix = `${BASE_PATH}/api/passkey/`
+    const isPkPage = req.method === 'GET' && pkPath === `${BASE_PATH}/passkeys`
+    if (isPkPage || (pkPath.startsWith(pkPrefix) && ['GET', 'POST'].includes(req.method))) {
+      const json = (status, obj) => {
+        res.writeHead(status, { ...cors, 'content-type': 'application/json', 'cache-control': 'no-store' })
+        return res.end(JSON.stringify(obj))
+      }
+      const readJson = async () => {
+        let raw = ''
+        for await (const chunk of req) {
+          raw += chunk
+          if (raw.length > 64 * 1024) return null
+        }
+        try { return JSON.parse(raw || '{}') } catch { return null }
+      }
+      const action = pkPath.slice(pkPrefix.length)
+      const isPublic = action === 'login-options' || action === 'login-verify'
+      if (!LIFEOS_AUTH_CONFIGURED) return json(503, { error: 'login non configurato' })
+      const user = sessionUserFor(req)
+      if (!isPublic && !user) {
+        if (isPkPage) {
+          res.writeHead(302, { ...cors, location: `${LOGIN_PATH}?next=${encodeURIComponent(req.url)}` })
+          return res.end()
+        }
+        return json(401, { error: 'unauthorized' })
+      }
+      try {
+        if (isPkPage) {
+          res.writeHead(200, { ...cors, 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+          return res.end(renderPasskeysPage({ base: BASE_PATH }))
+        }
+        if (req.method === 'GET' && action === 'list') return json(200, { passkeys: await listPasskeys() })
+        if (req.method !== 'POST') return json(405, { error: 'method' })
+        const body = await readJson()
+        if (!body) return json(400, { error: 'bad json' })
+        if (action === 'register-options') return json(200, await registrationOptions(user))
+        if (action === 'register-verify') return json(200, await registrationVerify(body))
+        if (action === 'remove') return json(200, await removePasskey(String(body.id ?? '')))
+        if (action === 'login-options') return json(200, await authenticationOptions())
+        if (action === 'login-verify') {
+          if (!(await authenticationVerify(body))) return json(401, { error: 'passkey non valida' })
+          const token = createSession(LIFEOS_SESSION_SECRET, LIFEOS_USERNAME)
+          res.writeHead(200, { ...cors, 'content-type': 'application/json', 'set-cookie': sessionCookieHeader(token) })
+          const next = typeof body.next === 'string' && /^\/(?!\/)/.test(body.next) ? body.next : `${BASE_PATH}/`
+          return res.end(JSON.stringify({ ok: true, next }))
+        }
+        return json(404, { error: 'not found' })
+      } catch (err) {
+        return json(400, { error: err?.message ?? String(err) })
+      }
+    }
+  }
+
+  // --- LifeOS login -------------------------------------------------------
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === LOGIN_PATH) {
+    const next = new URL(req.url, 'http://x').searchParams.get('next') || `${BASE_PATH}/`
+    res.writeHead(200, { ...cors, 'content-type': 'text/html; charset=utf-8' })
+    return res.end(renderLoginPage({ next, loginPath: LOGIN_PATH, passkeys: await hasPasskeys() }))
+  }
+
+  if (req.method === 'POST' && req.url === LOGIN_PATH) {
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 8 * 1024) break // a login form is a few dozen bytes
+    }
+    const { username = '', password = '', next = `${BASE_PATH}/` } = parseFormBody(body)
+    const ok =
+      LIFEOS_AUTH_CONFIGURED &&
+      username === LIFEOS_USERNAME &&
+      verifyPassword(password, LIFEOS_PASSWORD_HASH)
+    if (!ok) {
+      res.writeHead(401, { ...cors, 'content-type': 'text/html; charset=utf-8' })
+      return res.end(renderLoginPage({ next, error: 'Credenziali non valide.', loginPath: LOGIN_PATH, passkeys: await hasPasskeys() }))
+    }
+    const token = createSession(LIFEOS_SESSION_SECRET, username)
+    res.writeHead(302, {
+      ...cors,
+      'set-cookie': sessionCookieHeader(token),
+      location: next || `${BASE_PATH}/`,
+    })
+    return res.end()
+  }
+
+  if (req.method === 'POST' && req.url === LOGOUT_PATH) {
+    res.writeHead(302, { ...cors, 'set-cookie': clearSessionCookieHeader(), location: LOGIN_PATH })
+    return res.end()
+  }
+
+  // --- Health import, bearer-key gated (NOT the session cookie) -----------
+  // An iOS Shortcut POSTs here once (or a few times) a day with whatever
+  // Health metrics it read. Upserts by date, so a Shortcut that reruns the
+  // same day just overwrites that day's snapshot rather than duplicating it.
+  if (req.method === 'POST' && req.url === `${BASE_PATH}/api/health-import`) {
+    if (!HEALTH_IMPORT_KEY) {
+      res.writeHead(503, cors)
+      return res.end('health import not configured')
+    }
+    const auth = req.headers.authorization ?? ''
+    if (auth !== `Bearer ${HEALTH_IMPORT_KEY}`) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 16 * 1024) break // one day's metrics is a tiny JSON object
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    const { date, ...fields } = payload
+    const day = typeof date === 'string' && date ? date : new Date().toISOString().slice(0, 10)
+    const record = await setHealthSnapshot(day, fields)
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify({ ok: true, record }))
+  }
+
+  // Apple Health, as read by the iPhone app (HealthKit only exists there). The phone POSTs the last
+  // days of steps / active energy / sleep / weight / resting HR; the Mac app, the web and the phone
+  // itself read them back from here, so every client shows the same numbers. Session-gated like the
+  // rest of /api/lifeos-*, and it upserts the same per-day snapshots the Shortcut import writes.
+  if (new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-health`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const json = (code, obj) => {
+      res.writeHead(code, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(obj))
+    }
+    if (req.method === 'GET') {
+      const store = await getStore()
+      const dates = Object.keys(store.health).sort().slice(-14)
+      const days = dates.map((d) => store.health[d])
+      // Per-field latest value: today's snapshot may have steps but no weight yet.
+      const latest = {}
+      for (const day of days) for (const [k, v] of Object.entries(day)) if (v != null) latest[k] = v
+      return json(200, { days, latest })
+    }
+    if (req.method === 'POST') {
+      let body = ''
+      for await (const chunk of req) {
+        body += chunk
+        if (body.length > 64 * 1024) break
+      }
+      let payload
+      try { payload = JSON.parse(body || '{}') } catch { return json(400, { error: 'bad json' }) }
+      const FIELDS = ['steps', 'activeKcal', 'sleepHours', 'weight', 'restingHr']
+      const days = Array.isArray(payload.days) ? payload.days.slice(0, 31) : []
+      let saved = 0
+      for (const d of days) {
+        if (typeof d?.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) continue
+        const fields = {}
+        for (const k of FIELDS) if (typeof d[k] === 'number' && Number.isFinite(d[k])) fields[k] = d[k]
+        if (!Object.keys(fields).length) continue
+        await setHealthSnapshot(d.date, { ...fields, source: 'iphone' })
+        saved++
+      }
+      return json(200, { ok: true, saved })
+    }
+  }
+
+  // TREND IA on Salute e Nutrizione. Cached in the store, so a plain page
+  // load (no ?force) only hits Gemini once per LOCAL calendar day — this is
+  // what makes "si aggiorna una volta al giorno a meno che non aggiornato
+  // manualmente" true rather than just a label. localDateInt (not UTC
+  // slicing) is what keeps that boundary at local midnight, same as every
+  // other "today" in this file.
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-fitness-trend`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const force = new URL(req.url, 'http://x').searchParams.get('force') === '1'
+    try {
+      const cached = await getFitnessTrend()
+      const isFresh = cached?.generatedAtIso && localDateInt(new Date(cached.generatedAtIso)) === localDateInt()
+      const trend = !force && isFresh ? cached : await generateFitnessTrend()
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(trend))
+    } catch (err) {
+      res.writeHead(502, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // The home page's quick-add todo box — writes a real reminder (same
+  // store addReminder uses for the AI chat's "add_reminder" tool), so what
+  // you type there survives a reload and shows up anywhere else reminders
+  // do, instead of vanishing as soon as the tab closes.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-reminder-add`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 4 * 1024) break
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    const text = String(payload.text || '').trim()
+    if (!text) {
+      res.writeHead(400, cors)
+      return res.end('missing text')
+    }
+    const record = await addReminder({ text, due_iso: payload.due_iso || null })
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify(record))
+  }
+
+  // Marks a reminder done by deleting it outright — see lifeos-store.mjs.
+  // Same session gate as the read endpoint below; this is LifeOS's own data.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-reminder-complete`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 4 * 1024) break
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    const result = await completeReminder(Number(payload.id))
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify(result))
+  }
+
+  // Profilo's per-user settings — right now just the Gemini API key that
+  // "ASSISTENTE PER SEZIONE" needs once a section is assigned the Gemini
+  // model (see runGeminiModel above). Same session gate as the rest of
+  // LifeOS's own data: this never leaves the bridge except to call Gemini
+  // itself.
+  if (new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-settings`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    if (req.method === 'GET') {
+      const settings = await getSettings()
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(settings))
+    }
+    if (req.method === 'POST') {
+      let body = ''
+      for await (const chunk of req) {
+        body += chunk
+        if (body.length > 400 * 1024) break // profile photo included (capped at 250 KB)
+      }
+      let payload
+      try {
+        payload = JSON.parse(body || '{}')
+      } catch {
+        res.writeHead(400, cors)
+        return res.end('bad json')
+      }
+      const current = await getSettings()
+      const settings = await updateSettings({
+        ...(typeof payload.geminiApiKey === 'string' ? { geminiApiKey: payload.geminiApiKey.trim() } : {}),
+        // Per-user preferences shared by the web pages and the iOS app (so a choice made on one shows on the
+        // other): which model answers each section, light/dark, which calendars the home grid shows.
+        // Whitelisted and merged key by key — a payload with only {theme} leaves the rest alone.
+        ...(payload.profile && typeof payload.profile === 'object'
+          ? { profile: sanitizeProfile(current.profile, payload.profile) }
+          : {}),
+        // Merged field-by-field, not replaced wholesale — a payload that only
+        // sends {kcal: 2500} (Salute's +/- stepper) shouldn't blank out the
+        // other three targets.
+        ...(payload.nutritionTargets && typeof payload.nutritionTargets === 'object'
+          ? { nutritionTargets: { ...current.nutritionTargets, ...payload.nutritionTargets } }
+          : {}),
+      })
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(settings))
+    }
+  }
+
+  // The latest 06:00 briefing (see lifeos-briefing.mjs) — what the Telegram bot sent this morning.
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-briefing`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const briefing = await getBriefing()
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify({ briefing }))
+  }
+
+  // Pause/resume one cron automation (the AUTOMAZIONI card's toggle). Cron jobs only — see setAutomationEnabled.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-automation-toggle`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 2 * 1024) break
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    try {
+      const result = await setAutomationEnabled(payload.id, payload.enabled)
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(result))
+    } catch (err) {
+      res.writeHead(err?.status ?? 500, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // Add/edit/remove a row in one of Finanze's three editable collections —
+  // accounts, liabilities, assets. One endpoint for all three rather than
+  // six, since add/update/remove is the same shape of operation on each
+  // (see collectionOps in lifeos-store.mjs).
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-finance`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 8 * 1024) break
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    // Adding an asset never takes a price directly — the form sends a
+    // symbol, asset class and purchase date/time, and the actual numbers
+    // (today's price, and the historical price at that moment as the real
+    // cost basis) are resolved here. See market-prices.mjs for why.
+    if (payload.collection === 'assets' && payload.op === 'add') {
+      const { name, symbol, assetClass, qty, purchaseDateIso } = payload.data ?? {}
+      let looked
+      try {
+        looked = await lookupPrices({ assetClass, symbol, purchaseDateIso })
+      } catch (err) {
+        res.writeHead(400, { ...cors, 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+      }
+      const record = await addAsset({ name, symbol, assetClass, qty, avg: looked.avg, price: looked.price, purchaseDateIso })
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(record))
+    }
+
+    // Deleting one purchase from an asset's lot history — not the whole
+    // position (that's the plain 'remove' below).
+    if (payload.collection === 'assets' && payload.op === 'removeLot') {
+      const result = await removeAssetLot(Number(payload.id), Number(payload.lotId))
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(result))
+    }
+
+    const OPS = {
+      accounts: { add: addAccount, update: updateAccount, remove: removeAccount },
+      liabilities: { add: addLiability, update: updateLiability, remove: removeLiability },
+      assets: { add: addAsset, remove: removeAsset },
+      transactions: { add: addTransaction, remove: removeTransaction },
+      recurringBuys: { add: addRecurringBuy, update: updateRecurringBuy, remove: removeRecurringBuy },
+      habits: { add: addHabit, update: updateHabit, remove: removeHabit },
+      workouts: { add: addWorkout, update: updateWorkout, remove: removeWorkout },
+    }
+    const ops = OPS[payload.collection]
+    const fn = ops && ops[payload.op]
+    if (!fn) {
+      res.writeHead(400, cors)
+      return res.end('bad collection/op')
+    }
+    const result =
+      payload.op === 'remove' ? await fn(Number(payload.id))
+      : payload.op === 'update' ? await fn(Number(payload.id), payload.data ?? {})
+      : await fn(payload.data ?? {})
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify(result))
+  }
+
+  // Food picker for "Salute e Nutrizione" 's "+ Aggiungi pasto" — free-text
+  // search against FatSecret's food database, cheap fields only (see
+  // lifeos-fatsecret.mjs). Real nutrition is fetched only for the one food
+  // the user actually picks, by /api/lifeos-meal-add below.
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-food-search`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const q = new URL(req.url, 'http://x').searchParams.get('q') || ''
+    try {
+      const results = await searchFoods(q)
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ results }))
+    } catch (err) {
+      const status = err instanceof FatSecretError ? 400 : 500
+      res.writeHead(status, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // Logs one meal — either a FatSecret pick (`foodId`, real kcal/macros
+  // looked up server-side) or a plain manual entry (`name`+`kcal`, macros
+  // 0) — same shape either way, see addMeal in lifeos-store.mjs.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-meal-add`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 4 * 1024) break
+    }
+    let payload
+    try {
+      payload = JSON.parse(body || '{}')
+    } catch {
+      res.writeHead(400, cors)
+      return res.end('bad json')
+    }
+    try {
+      let record
+      if (payload.foodId) {
+        const food = await getFoodDetail(payload.foodId)
+        const name = food.brand ? `${food.name} (${food.brand})` : food.name
+        record = await addMeal({
+          meal_name: name, kcal: food.kcal, protein: food.protein, carbs: food.carbs, fat: food.fat,
+          servingDescription: food.servingDescription, source: 'fatsecret',
+          foodId: food.id, servingId: food.servingId,
+        })
+        // Mirrors into the user's REAL FatSecret diary — only possible here
+        // because a search-based add has a real food_id/serving_id; a
+        // manual entry (below) never does. A failed push (not connected,
+        // network hiccup) still leaves the meal saved locally — it just
+        // isn't mirrored this time, rather than losing the whole add.
+        const auth = await getFatsecretAuth()
+        if (auth) {
+          try {
+            const entry = await createFoodEntry(auth.accessToken, auth.accessTokenSecret, {
+              foodId: food.id, servingId: food.servingId, name,
+              meal: mealBucketFor(new Date(record.time)), dateInt: localDateInt(new Date(record.time)),
+            })
+            record = await markMealSynced(record.id, String(entry.food_entry_id))
+          } catch (err) {
+            console.error('[jarvis] FatSecret diary push failed:', err?.message ?? err)
+          }
+        }
+      } else {
+        record = await addMeal({ meal_name: payload.name, kcal: payload.kcal, source: 'manuale' })
+      }
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(record))
+    } catch (err) {
+      const status = err instanceof FatSecretError ? 400 : 500
+      res.writeHead(status, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // FatSecret diary OAuth1 — step 1: mint a request token and send the
+  // browser to FatSecret's own login/approve page. See
+  // lifeos-fatsecret-diary.mjs for why this is a whole separate dance from
+  // the food-search routes above (a different auth scheme entirely).
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-fatsecret-connect`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    try {
+      const callbackUrl = `${publicOriginFor(req)}${BASE_PATH}/api/lifeos-fatsecret-callback`
+      const { token, tokenSecret } = await getRequestToken(callbackUrl)
+      pendingFatsecretRequest = { token, tokenSecret }
+      res.writeHead(302, { ...cors, location: authorizeUrl(token) })
+      return res.end()
+    } catch (err) {
+      res.writeHead(500, cors)
+      return res.end(`connessione FatSecret fallita: ${err?.message ?? err}`)
+    }
+  }
+
+  // Step 3 — FatSecret redirects the browser back here once the user has
+  // logged into THEIR FatSecret account and approved access to their diary.
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-fatsecret-callback`) {
+    const params = new URL(req.url, 'http://x').searchParams
+    const token = params.get('oauth_token')
+    const verifier = params.get('oauth_verifier')
+    if (!pendingFatsecretRequest || pendingFatsecretRequest.token !== token) {
+      res.writeHead(400, cors)
+      return res.end('richiesta FatSecret scaduta o non riconosciuta — riprova a collegare il diario')
+    }
+    try {
+      const { accessToken, accessTokenSecret } = await getAccessToken(token, pendingFatsecretRequest.tokenSecret, verifier)
+      pendingFatsecretRequest = null
+      await setFatsecretAuth({ accessToken, accessTokenSecret })
+      res.writeHead(302, { ...cors, location: `${BASE_PATH}/Salute%20e%20Nutrizione.dc.html?fatsecret=connected` })
+      return res.end()
+    } catch (err) {
+      res.writeHead(500, cors)
+      return res.end(`autorizzazione FatSecret fallita: ${err?.message ?? err}`)
+    }
+  }
+
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-fatsecret-disconnect`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const result = await clearFatsecretAuth()
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify(result))
+  }
+
+  // --- LifeOS data API, session-gated -------------------------------------
+  // Read-only: what a chat action wrote (see lifeos-store.mjs), so a page can
+  // load it back on mount instead of showing only what was added this
+  // session. Same auth as the pages — this is LifeOS's own data, not a
+  // public API.
+  if (req.method === 'GET' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-data`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    const store = await getStore()
+    // Events are read live from Apple's CalDAV; reminders are not — see the
+    // note at the top of lifeos-store.mjs for why, and getStore() already
+    // supplies them in the {id, text, when, done} shape the pages read.
+    // Each fetch here is independent so a CalDAV hiccup only blanks events,
+    // not the transactions/meals/reminders that did load.
+    let events = []
+    let calendarNames = []
+    let calendarColors = {}
+    try {
+      events = (await listEvents(14)).map((e, i) => ({
+        id: `ev${i}`, title: e.title, when: e.startIso ?? e.start, until: e.endIso, location: e.location, calendar: e.calendar,
+      }))
+    } catch (err) {
+      console.error('[jarvis] listEvents failed:', err?.message ?? err)
+    }
+    try {
+      calendarNames = await listCalendarNames()
+    } catch (err) {
+      console.error('[jarvis] listCalendarNames failed:', err?.message ?? err)
+    }
+    try {
+      calendarColors = await listCalendarColors()
+    } catch (err) {
+      console.error('[jarvis] listCalendarColors failed:', err?.message ?? err)
+    }
+    let didupVerifiche = []
+    let didupCompiti = []
+    try {
+      didupVerifiche = await fetchVerifiche()
+    } catch (err) {
+      console.error('[jarvis] fetchVerifiche failed:', err?.message ?? err)
+    }
+    try {
+      didupCompiti = await fetchCompiti()
+    } catch (err) {
+      console.error('[jarvis] fetchCompiti failed:', err?.message ?? err)
+    }
+    let automations = []
+    try {
+      automations = await listAutomations()
+    } catch (err) {
+      console.error('[jarvis] listAutomations failed:', err?.message ?? err)
+    }
+    // This week's real habit completion, for Review's week-counter and its
+    // COSA È ANDATO BENE / COSA È SLITTATO cards. The multi-week history
+    // Gemini compares against is computed separately, only when that chat
+    // is actually used — see runGeminiModel.
+    const reviewWeek = currentWeekSummary(store.habits, new Date())
+    const healthDates = Object.keys(store.health).sort()
+    const latestHealth = healthDates.length ? store.health[healthDates[healthDates.length - 1]] : null
+
+    // Refresh price plus real 24h/7d/30d/1y % change for each held asset on
+    // every read, in parallel — the stored value is only ever last read's
+    // price, and Finanze has no other moment that would update it. "avg"
+    // (the cost basis resolved once at purchase time) is never touched
+    // here. A quote that fails to load just keeps that one row's last
+    // known price/deltas rather than blanking the page.
+    const assets = await Promise.all(
+      store.assets.map(async (a) => {
+        try {
+          const { price, d24, d7, d30, d1a } = await lookupDetails({ assetClass: a.assetClass, symbol: a.symbol })
+          // The ANDAMENTI chart's real line — since the EARLIEST lot's own
+          // purchase date, not an arbitrary fixed window, so "Tutto" always
+          // reads as "since I actually bought this". A history fetch failing
+          // still leaves the price/deltas above intact — the chart just
+          // falls back to nothing for that one asset rather than the page.
+          const lotDates = (a.lots ?? []).map((l) => l.date).filter(Boolean).sort()
+          let priceHistory = []
+          try {
+            priceHistory = await lookupHistory({ assetClass: a.assetClass, symbol: a.symbol, sinceIso: lotDates[0] })
+          } catch (err) {
+            console.error(`[jarvis] price history failed for ${a.symbol}:`, err?.message ?? err)
+          }
+          return { ...a, price, d24, d7, d30, d1a, priceHistory }
+        } catch (err) {
+          console.error(`[jarvis] price refresh failed for ${a.symbol}:`, err?.message ?? err)
+          return a
+        }
+      }),
+    )
+
+    // The BTC/EUNL navbar chips shown on every LifeOS page — a fixed market
+    // pulse, not tied to what's actually held (that's Finanze's own asset
+    // table). Independent of the portfolio above; missing on a lookup
+    // failure rather than blocking the rest of the page.
+    const marketPulse = {}
+    const [btcResult, eunlResult] = await Promise.allSettled([
+      lookupDetails({ assetClass: 'crypto', symbol: 'BTC' }),
+      lookupDetails({ assetClass: 'stock', symbol: 'EUNL' }),
+    ])
+    if (btcResult.status === 'fulfilled') marketPulse.btc = btcResult.value
+    else console.error('[jarvis] BTC market pulse failed:', btcResult.reason?.message ?? btcResult.reason)
+    if (eunlResult.status === 'fulfilled') marketPulse.eunl = eunlResult.value
+    else console.error('[jarvis] EUNL market pulse failed:', eunlResult.reason?.message ?? eunlResult.reason)
+
+    // Pulls in anything logged in the real FatSecret app today that LifeOS
+    // doesn't have yet — the other half of the sync, see importFatsecretEntries
+    // in lifeos-store.mjs for the dedupe logic. `store` was already loaded
+    // above, so the newly-added records are folded in locally rather than
+    // re-reading the file, but they ARE persisted (importFatsecretEntries
+    // writes them). A hiccup here (not connected, network) just means
+    // today's view doesn't include a diary sync this time, same fallback
+    // shape as events/calendars above.
+    const fatsecretAuth = await getFatsecretAuth()
+    if (fatsecretAuth) {
+      try {
+        const entries = await getFoodEntries(fatsecretAuth.accessToken, fatsecretAuth.accessTokenSecret, localDateInt())
+        const added = await importFatsecretEntries(entries)
+        if (added.length) store.meals = store.meals.concat(added)
+      } catch (err) {
+        console.error('[jarvis] FatSecret diary import failed:', err?.message ?? err)
+      }
+    }
+
+    const nutritionToday = summarizeMealsForToday(store.meals)
+    // store.fatsecretAuth carries the real OAuth1 access token secret — never
+    // shipped to the browser; fatsecretConnected (just a boolean) is all the
+    // frontend needs to show connect/connected state.
+    const { fatsecretAuth: _fatsecretAuthOmitted, ...storeForClient } = store
+
+    res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify({ ...storeForClient, assets, events, latestHealth, calendarNames, calendarColors, marketPulse, didupVerifiche, didupCompiti, nutritionToday, automations, reviewWeek, fatsecretConnected: !!fatsecretAuth }))
+  }
+
+  // --- LifeOS pages, session-gated ----------------------------------------
+  // Only reached for the fixed set of files lifeosFileFor() knows about — see
+  // lifeos.mjs. Everything else falls through to the 404 below unchanged.
+  if (req.method === 'GET') {
+    const name = lifeosFileFor(new URL(req.url, 'http://x').pathname, BASE_PATH)
+    if (name) {
+      if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+        res.writeHead(302, { ...cors, location: `${LOGIN_PATH}?next=${encodeURIComponent(req.url)}` })
+        return res.end()
+      }
+      return serveLifeosFile(name, res, cors)
+    }
+  }
+
   res.writeHead(404, cors)
   res.end()
 }
@@ -984,7 +1963,7 @@ const wss = new WebSocketServer({
   // 403 would look like the bridge simply isn't running.
   verifyClient: ({ origin, req }, done) => {
     const path = (req.url ?? '/').split('?')[0]
-    if (path !== '/' && path !== '/ws') {
+    if (path !== '/' && path !== '/ws' && path !== WS_PATH) {
       console.warn(`[jarvis] rejected websocket on path ${path}`)
       return done(false, 403, 'Forbidden')
     }
@@ -995,10 +1974,23 @@ const wss = new WebSocketServer({
       )
       return done(false, 403, 'Forbidden')
     }
+    if (requiresSession(origin) && !sessionUserFor(req)) {
+      console.warn(`[jarvis] rejected websocket from ${origin} — no valid LifeOS session`)
+      return done(false, 401, 'Unauthorized')
+    }
     done(true)
   },
 })
-server.listen(PORT)
+// Bound to all interfaces by default, exactly as before. Set JARVIS_BRIDGE_HOST
+// to 127.0.0.1 on a deployment sitting behind a reverse proxy, so the raw
+// bridge — Origin-checked but not TLS-terminated — is never reachable except
+// through that proxy.
+const BRIDGE_HOST = process.env.JARVIS_BRIDGE_HOST || undefined
+if (BRIDGE_HOST) server.listen(PORT, BRIDGE_HOST)
+else server.listen(PORT)
+
+startRecurringBuyScheduler()
+startVerificheSyncScheduler()
 
 console.log(`[jarvis] bridge listening on ws://localhost:${PORT}`)
 console.log(
@@ -1025,6 +2017,16 @@ console.log(
   '[jarvis] accepting local dev origins' +
     (EXTRA_ORIGINS.size ? ` plus ${[...EXTRA_ORIGINS].join(', ')}` : '') +
     (ALLOW_NO_ORIGIN ? ' and clients that send no origin' : ''),
+)
+console.log(
+  LIFEOS_AUTH_CONFIGURED
+    ? `[jarvis] LifeOS pages served, login required for ${LIFEOS_USERNAME} on non-local origins`
+    : '[jarvis] LifeOS pages served with NO LOGIN — set LIFEOS_USERNAME/PASSWORD_HASH/SESSION_SECRET before exposing this bridge publicly',
+)
+console.log(
+  QWEN_URL
+    ? `[jarvis] local model (Qwen2.5) available at ${QWEN_URL}`
+    : '[jarvis] local model not configured — set QWEN_URL to offer it as a model in the LifeOS pages',
 )
 
 /**
@@ -1085,6 +2087,153 @@ wss.on('connection', (socket) => {
    */
   let answering = null
   const sendTurn = (msg) => send({ ...msg, ask: answering })
+
+  /**
+   * The local-model path: a single non-streaming call to llama-server's
+   * OpenAI-compatible endpoint, offering the tools that section is allowed
+   * to use (see lifeos-tools.mjs). Non-streaming because a tool call arrives
+   * as one JSON object, not text worth showing token-by-token — these are
+   * short confirmations, not essays. Independent of the Claude session's
+   * turn queue: nothing here shares state with it, so requests just run as
+   * they arrive.
+   *
+   * The reply text is NEVER the model's own claim of success — it's built
+   * from the record lifeos-tools.mjs actually wrote (see runTool's
+   * `confirm`). A tool call that fails to write never gets a confirmation.
+   */
+  async function runLocalModel(text, id, section) {
+    answering = id
+    if (!QWEN_URL) {
+      sendTurn({ type: 'error', message: 'Il modello locale non è configurato su questo bridge.' })
+      return
+    }
+    try {
+      const tools = toolsForSection(section)
+      const res = await fetch(QWEN_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(QWEN_API_KEY ? { authorization: `Bearer ${QWEN_API_KEY}` } : {}),
+        },
+        // A tool call that never terminates would otherwise hang the request
+        // indefinitely — measured on MiniCPM under a different schema, where
+        // the model generated past 1000 tokens without closing its JSON.
+        // The "home" section offers all four tools at once, so its prompt is
+        // roughly 4x longer than a single-tool section's — measured over
+        // 90s on this Pi before that extra prompt-processing time is done.
+        signal: AbortSignal.timeout(120_000),
+        body: JSON.stringify({
+          model: process.env.QWEN_MODEL || 'qwen2.5-3b',
+          stream: false,
+          max_tokens: 400,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: systemPromptFor(section) },
+            { role: 'user', content: text },
+          ],
+          ...(tools.length ? { tools } : {}),
+        }),
+      })
+      if (!res.ok) {
+        sendTurn({ type: 'error', message: `Il modello locale ha risposto ${res.status}.` })
+        return
+      }
+      const data = await res.json()
+      const message = data.choices?.[0]?.message
+      const calls = (message?.tool_calls ?? []).map((c) => c.function).filter(Boolean)
+      if (calls.length) {
+        const confirms = []
+        let lastRecord = null
+        let lastAction = null
+        for (const call of calls) {
+          let args
+          try {
+            args = JSON.parse(call.arguments || '{}')
+          } catch {
+            confirms.push('Ho proposto un’azione non valida.')
+            continue
+          }
+          try {
+            const { record, confirm, action } = await runTool(call.name, args)
+            confirms.push(confirm)
+            lastRecord = record
+            lastAction = action
+          } catch (err) {
+            // A bad/empty argument (amount 0, blank name…) is a clarifying
+            // question, not a failure — and definitely not a fabricated record.
+            if (err instanceof ActionValidationError) confirms.push(err.message)
+            else throw err
+          }
+        }
+        sendTurn({ type: 'done', text: confirms.join('\n'), data: lastRecord, action: lastAction })
+        return
+      }
+      sendTurn({ type: 'done', text: message?.content || '...' })
+    } catch (err) {
+      sendTurn({
+        type: 'error',
+        message: `Modello locale non raggiungibile: ${err?.message ?? err}`,
+      })
+    }
+  }
+
+  /**
+   * The Gemini path: one non-streaming call to the Generative Language
+   * API's generateContent endpoint. No tools — sections routed here are
+   * analysis/chat only, nothing to write — so unlike runLocalModel this
+   * never touches lifeos-tools.mjs.
+   */
+  async function runGeminiModel(text, id, section) {
+    answering = id
+    const { geminiApiKey } = await getSettings()
+    if (!geminiApiKey) {
+      sendTurn({ type: 'error', message: 'La chiave API di Gemini non è configurata: aggiungila dal tuo Profilo.' })
+      return
+    }
+    // Review gets its last 8 weeks of real habit data folded into the
+    // system instruction — the only way this "no tools" path can answer
+    // "genera un riepilogo" or "confronta con la settimana scorsa / la
+    // settimana 35" with real numbers instead of making something up.
+    // Gemini itself figures out which week(s) the question means; nothing
+    // here parses "scorsa" or a week number, the data for all of them is
+    // just already in front of it.
+    let contextBlock = ''
+    if (section === 'review') {
+      try {
+        const store = await getStore()
+        const weeks = recentWeekSummaries(store.habits, new Date(), 8)
+        contextBlock =
+          '\n\nDati reali delle ultime 8 settimane (solo abitudini — i promemoria completati non lasciano storico), dalla più recente:\n\n' +
+          weeks.map(formatWeekSummary).join('\n\n')
+      } catch (err) {
+        console.error('[jarvis] review week summary for Gemini failed:', err?.message ?? err)
+      }
+    }
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          signal: AbortSignal.timeout(30_000),
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPromptFor(section) + contextBlock }] },
+            contents: [{ role: 'user', parts: [{ text }] }],
+          }),
+        },
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        sendTurn({ type: 'error', message: body?.error?.message || `Gemini ha risposto ${res.status}.` })
+        return
+      }
+      const data = await res.json()
+      const reply = data.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '...'
+      sendTurn({ type: 'done', text: reply })
+    } catch (err) {
+      sendTurn({ type: 'error', message: `Gemini non raggiungibile: ${err?.message ?? err}` })
+    }
+  }
 
   /**
    * Asking the browser for something and waiting for the answer.
@@ -1214,6 +2363,11 @@ wss.on('connection', (socket) => {
         jarvis_chrome: chromeServer({ allowWrites: ALLOW_WRITES }),
         // The camera, which unlike everything else here has to ask and wait.
         jarvis_eyes: visionServer(ask),
+        // Real cron automations — plan in conversation, write the script
+        // with the normal tools, schedule it for real here. See
+        // lifeos-cron.mjs. Gated by the generic verb rules below, same as
+        // any other MCP server not hand-exempted above.
+        jarvis_cron: lifeosCronServer(),
       },
       // A plain system prompt, not the claude_code preset. The preset is
       // tuned for a coding agent — verbose, file-oriented, and a large chunk
@@ -1419,16 +2573,24 @@ wss.on('connection', (socket) => {
        */
       const text = msg.text
       const id = typeof msg.id === 'string' ? msg.id : null
-      void settling.then(() => {
-        answering = id
-        if (deliver) {
-          const resolve = deliver
-          deliver = null
-          resolve(text)
-        } else {
-          inbox.push(text)
-        }
-      })
+      if (msg.model === 'qwen') {
+        const section = typeof msg.section === 'string' ? msg.section : null
+        void runLocalModel(text, id, section)
+      } else if (msg.model === 'gemini') {
+        const section = typeof msg.section === 'string' ? msg.section : null
+        void runGeminiModel(text, id, section)
+      } else {
+        void settling.then(() => {
+          answering = id
+          if (deliver) {
+            const resolve = deliver
+            deliver = null
+            resolve(text)
+          } else {
+            inbox.push(text)
+          }
+        })
+      }
     }
 
     if (msg.type === 'reply' && typeof msg.id === 'string') {
