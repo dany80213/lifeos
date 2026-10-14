@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./jarvis-client.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-variant-numeric: tabular-nums; }
+  a { color: inherit; text-decoration: none; }
+  a:hover { opacity: 0.8; }
+  @keyframes blobDrift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,-40px) scale(1.12); } }
+  @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
+  @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
+  input::placeholder { color: inherit; opacity: 0.45; }
+</style>
+</helmet>
+<div style="{{ styles.page }}">
+  <div style="{{ styles.blobA }}"></div>
+  <div style="{{ styles.blobB }}"></div>
+  <div style="{{ styles.blobC }}"></div>
+
+  <div style="{{ styles.navWrap }}">
+    <div style="{{ styles.navbar }}">
+      <div style="{{ styles.navLeft }}">
+        <div style="{{ styles.logo }}">LifeOS</div>
+        <div style="{{ styles.tabRow }}">
+          <div style="{{ styles.tabActive }}">Home</div>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+        </div>
+      </div>
+      <div style="{{ styles.navRight }}">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+          <div style="{{ styles.themeKnob }}"></div>
+        </div>
+        <div style="{{ btc.chipStyle }}">
+          <span style="{{ styles.chipLabel }}">BTC</span>
+          <span style="{{ styles.chipPrice }}">{{ btc.price }}</span>
+          <span style="{{ btc.arrowStyle }}"></span>
+          <span style="{{ btc.deltaStyle }}">{{ btc.change }}</span>
+        </div>
+        <div style="{{ eunl.chipStyle }}">
+          <span style="{{ styles.chipLabel }}">EUNL</span>
+          <span style="{{ styles.chipPrice }}">{{ eunl.price }}</span>
+          <span style="{{ eunl.arrowStyle }}"></span>
+          <span style="{{ eunl.deltaStyle }}">{{ eunl.change }}</span>
+        </div>
+        <div style="{{ styles.clockBlock }}">
+          <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
+          <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
+        </div>
+        <a href="Profilo.dc.html" style="{{ styles.navAvatarLink }}" style-hover="{{ styles.navAvatarLinkHover }}"><div style="{{ styles.navAvatar }}">D</div></a>
+      </div>
+    </div>
+  </div>
+
+  <div style="{{ styles.container }}">
+    <div style="{{ styles.row1 }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.sessionTop }}">
+          <div>
+            <div style="{{ styles.cardLabel }}">SESSIONE</div>
+            <div style="{{ styles.greeting }}">{{ greeting }}</div>
+          </div>
+          <div style="{{ styles.sessionClockBlock }}">
+            <div style="{{ styles.sessionTime }}">{{ timeStr }}</div>
+            <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
+          </div>
+        </div>
+        <div style="{{ styles.todoInputRow }}">
+          <input style="{{ styles.todoInput }}" placeholder="Aggiungi una cosa da fare oggi…" value="{{ newTodo }}" onChange="{{ onNewTodoChange }}" onKeyDown="{{ onNewTodoKeyDown }}"></input>
+          <div style="{{ styles.addBtn }}" onClick="{{ addTodo }}">+</div>
+        </div>
+        <div style="{{ styles.todoList }}">
+          <sc-for list="{{ todos }}" as="t" hint-placeholder-count="3">
+            <div style="{{ t.rowStyle }}" onClick="{{ t.toggle }}">
+              <div style="{{ t.checkStyle }}">
+                <sc-if value="{{ t.done }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ styles.checkMark }}"></div>
+                </sc-if>
+              </div>
+              <div style="{{ t.textStyle }}">{{ t.text }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.opHeader }}">
+          <div style="{{ styles.avatar }}">D</div>
+          <div>
+            <div style="{{ styles.opName }}">Daniele</div>
+            <div style="{{ styles.opSub }}">Full-stack developer · Milano</div>
+          </div>
+        </div>
+        <div style="{{ styles.sectionLabel }}">FOCUS DI OGGI</div>
+        <div style="{{ styles.focusList }}">
+          <sc-for list="{{ focusItems }}" as="f" hint-placeholder-count="3">
+            <div style="{{ styles.focusRow }}">
+              <div style="{{ styles.focusDot }}"></div>
+              <div style="{{ styles.focusText }}">{{ f }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ !hasFocus }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.focusEmpty }}">Nessun impegno per oggi.</div>
+          </sc-if>
+        </div>
+        <div style="{{ styles.divider }}"></div>
+        <div style="{{ styles.sectionLabel }}">STREAK ABITUDINI</div>
+        <div style="{{ styles.streakRow }}">
+          <div style="{{ styles.streakNum }}">{{ streakCount }}</div>
+          <div style="{{ styles.streakUnit }}">giorni</div>
+        </div>
+        <div style="{{ styles.dotsRow }}">
+          <sc-for list="{{ streakDots }}" as="d" hint-placeholder-count="7">
+            <div style="{{ d.style }}"></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.row2 }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">ABITUDINI</div>
+          <div style="{{ styles.habitPct }}">{{ habitPctLabel }}</div>
+        </div>
+        <div style="{{ styles.progressTrack }}">
+          <div style="{{ styles.progressFill }}"></div>
+        </div>
+        <div style="{{ styles.habitList }}">
+          <sc-for list="{{ habits }}" as="h" hint-placeholder-count="5">
+            <div style="{{ h.rowStyle }}" onClick="{{ h.toggle }}">
+              <div style="{{ h.checkStyle }}">
+                <sc-if value="{{ h.done }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ styles.checkMark }}"></div>
+                </sc-if>
+              </div>
+              <div style="{{ h.labelStyle }}">{{ h.name }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ !hasHabits }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.schoolEmpty }}">{{ habitsEmptyLabel }}</div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">CALENDARIO</div>
+          <div style="{{ styles.calHeaderRight }}">
+            <div style="{{ styles.legendRow }}">
+              <div style="{{ styles.legendItem }}"><div style="{{ styles.legendDotApple }}"></div>Apple Calendar</div>
+              <div style="{{ styles.legendItem }}"><div style="{{ styles.legendDotReminder }}"></div>Promemoria</div>
+            </div>
+            <div style="{{ styles.calPickerWrap }}">
+              <div style="{{ styles.calPickerBtn }}" onClick="{{ toggleCalendarPicker }}">Calendari ▾</div>
+              <sc-if value="{{ calendarPickerOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ styles.calPickerPanel }}">
+                  <sc-for list="{{ calendarOptions }}" as="co" hint-placeholder-count="4">
+                    <div style="{{ styles.calPickerRow }}" onClick="{{ co.toggle }}">
+                      <div style="{{ co.checkStyle }}">
+                        <sc-if value="{{ co.checked }}" hint-placeholder-val="{{ true }}">
+                          <div style="{{ styles.checkMark }}"></div>
+                        </sc-if>
+                      </div>
+                      <div style="{{ co.dotStyle }}"></div>
+                      <div style="{{ styles.calPickerLabel }}">{{ co.name }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div style="{{ styles.syncBadge }}"><div style="{{ styles.syncDot }}"></div>Sincronizzato</div>
+          </div>
+        </div>
+        <div style="{{ styles.calendarBodyWrap }}">
+        <div style="{{ styles.weekGridWrap }}">
+        <div style="{{ styles.weekGrid }}">
+          <sc-for list="{{ calendarDays }}" as="day" hint-placeholder-count="7">
+            <div style="{{ styles.dayCol }}">
+              <div style="{{ day.headerStyle }}">
+                <div style="{{ styles.dayName }}">{{ day.name }}</div>
+                <div style="{{ styles.dayNum }}">{{ day.num }}</div>
+              </div>
+              <div style="{{ styles.dayTrack }}">
+                <sc-if value="{{ day.showLine }}" hint-placeholder-val="{{ false }}">
+                  <div style="{{ day.lineStyle }}"></div>
+                </sc-if>
+                <div style="{{ styles.daySectionLabel }}">Eventi</div>
+                <sc-for list="{{ day.events }}" as="ev" hint-placeholder-count="1">
+                  <div style="{{ ev.style }}" onClick="{{ ev.onClick }}">
+                    <div style="{{ ev.timeStyle }}">{{ ev.time }}</div>
+                    <div style="{{ ev.titleStyle }}">{{ ev.title }}</div>
+                  </div>
+                </sc-for>
+                <div style="{{ styles.daySectionLabel }}">Promemoria</div>
+                <sc-for list="{{ day.todos }}" as="td2" hint-placeholder-count="1">
+                  <div style="{{ td2.style }}" onClick="{{ td2.onClick }}">
+                    <div style="{{ td2.timeStyle }}">{{ td2.time }}</div>
+                    <div style="{{ td2.titleStyle }}">{{ td2.title }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="{{ styles.dayFooter }}">
+                <div style="{{ styles.dayCount }}">{{ day.total }} impegni</div>
+                <div style="{{ styles.dayDotsRow }}">
+                  <sc-for list="{{ day.dots }}" as="dot" hint-placeholder-count="2">
+                    <div style="{{ dot.style }}"></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </div>
+        <div style="{{ styles.eventDetailWrap }}">
+          <div style="{{ styles.eventDetailBack }}" onClick="{{ closeEvent }}">← Torna al calendario</div>
+          <div style="{{ styles.modalSourceRow }}">
+            <div style="{{ selectedEvent.dotStyle }}"></div>
+            <div style="{{ styles.sectionLabel }}">{{ selectedEvent.source }}</div>
+          </div>
+          <div style="{{ styles.modalTitle }}">{{ selectedEvent.title }}</div>
+          <div style="{{ styles.modalRow }}"><span style="{{ styles.modalRowLabel }}">Giorno</span><span style="{{ styles.modalRowVal }}">{{ selectedEvent.dayLabel }}</span></div>
+          <div style="{{ styles.modalRow }}"><span style="{{ styles.modalRowLabel }}">Orario</span><span style="{{ styles.modalRowVal }}">{{ selectedEvent.time }}</span></div>
+          <sc-if value="{{ selectedEvent.hasLocation }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.modalRow }}"><span style="{{ styles.modalRowLabel }}">Luogo</span><span style="{{ styles.modalRowVal }}">{{ selectedEvent.location }}</span></div>
+            <div style="{{ styles.mapPlaceholder }}">mappa: {{ selectedEvent.location }}</div>
+          </sc-if>
+          <div style="{{ styles.modalRow }}">
+            <span style="{{ styles.modalRowLabel }}">Notifica</span>
+            <select style="{{ styles.notifySelect }}" value="{{ notifyMinutes }}" onChange="{{ onNotifyChange }}">
+              <option value="none">Nessuna</option>
+              <option value="5">5 minuti prima</option>
+              <option value="15">15 minuti prima</option>
+              <option value="30">30 minuti prima</option>
+              <option value="60">1 ora prima</option>
+              <option value="1440">1 giorno prima</option>
+            </select>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.row3 }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">POLSO FINANZIARIO</div>
+          <a style="{{ styles.finLink }}" href="Finanze.dc.html">Vai a Finanze →</a>
+        </div>
+        <div style="{{ styles.finMainRow }}">
+          <div>
+            <div style="{{ styles.finLabel }}">Patrimonio netto totale</div>
+            <div style="{{ styles.finBigNum }}">{{ finBigNum }}</div>
+          </div>
+          <div style="{{ finDeltaChipStyle }}">{{ finDeltaText }}</div>
+        </div>
+        <div style="{{ styles.finSecondaryGrid }}">
+          <sc-for list="{{ finSecondary }}" as="fs" hint-placeholder-count="4">
+            <div>
+              <div style="{{ styles.finSecLabel }}">{{ fs.label }}</div>
+              <div style="{{ styles.finSecValue }}">{{ fs.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <svg viewBox="0 0 300 50" style="{{ styles.sparkline }}" preserveAspectRatio="none">
+          <polyline points="{{ sparklinePoints }}" fill="none" stroke-width="2.5" style="{{ styles.sparklineStroke }}"></polyline>
+        </svg>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">NUTRIZIONE</div>
+          <div style="{{ styles.segmentRow }}">
+            <sc-for list="{{ nutritionModes }}" as="m" hint-placeholder-count="3">
+              <div style="{{ m.style }}" onClick="{{ m.select }}">{{ m.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="{{ styles.nutriMainRow }}">
+          <div style="{{ styles.kcalRingOuter }}">
+            <div style="{{ styles.kcalRingInner }}">
+              <div style="{{ styles.kcalNum }}">1.850</div>
+              <div style="{{ styles.kcalTarget }}">/ 2.400 kcal</div>
+            </div>
+          </div>
+          <div style="{{ styles.macrosCol }}">
+            <sc-for list="{{ macros }}" as="mac" hint-placeholder-count="3">
+              <div style="{{ styles.macroRow }}">
+                <div style="{{ styles.macroHead }}">
+                  <div style="{{ styles.macroName }}">{{ mac.name }}</div>
+                  <div style="{{ styles.macroVal }}">{{ mac.consumed }} / {{ mac.target }} g</div>
+                </div>
+                <div style="{{ styles.macroTrack }}">
+                  <div style="{{ mac.fillStyle }}"></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="{{ styles.mealList }}">
+          <sc-for list="{{ meals }}" as="meal" hint-placeholder-count="4">
+            <div style="{{ styles.mealRow }}">
+              <div style="{{ styles.mealTime }}">{{ meal.time }}</div>
+              <div style="{{ styles.mealName }}">{{ meal.name }}</div>
+              <div style="{{ styles.mealKcal }}">{{ meal.kcal }} kcal</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.row4 }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">VERIFICHE</div>
+        </div>
+        <div style="{{ styles.schoolList }}">
+          <sc-if value="{{ hasVerifiche }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ verificheRows }}" as="v" hint-placeholder-count="3">
+              <div style="{{ styles.schoolRow }}">
+                <div style="{{ v.dateStyle }}">{{ v.dateLabel }}</div>
+                <div style="{{ styles.schoolBody }}">
+                  <div style="{{ styles.schoolTitle }}">{{ v.title }}</div>
+                  <div style="{{ styles.schoolMeta }}">{{ v.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ !hasVerifiche }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.schoolEmpty }}">Nessuna verifica in programma.</div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">COMPITI</div>
+        </div>
+        <div style="{{ styles.schoolList }}">
+          <sc-if value="{{ hasCompiti }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ compitiRows }}" as="c" hint-placeholder-count="3">
+              <div style="{{ styles.schoolRow }}">
+                <div style="{{ c.dateStyle }}">{{ c.dateLabel }}</div>
+                <div style="{{ styles.schoolBody }}">
+                  <div style="{{ styles.schoolTitle }}">{{ c.title }}</div>
+                  <div style="{{ styles.schoolMeta }}">{{ c.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ !hasCompiti }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.schoolEmpty }}">Nessun compito in programma.</div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.jarvisHeaderRow }}">
+        <div style="{{ styles.jarvisAvatar }}">J</div>
+        <div style="{{ styles.jarvisHeaderText }}">
+          <div style="{{ styles.jarvisTitle }}">JARVIS</div>
+          <div style="{{ styles.jarvisSubtitle }}">Il tuo assistente personale</div>
+        </div>
+        <div style="{{ styles.jarvisStatus }}"><div style="{{ styles.jarvisStatusDot }}"></div>{{ jarvisStatusLabel }}</div>
+      </div>
+
+      <div style="{{ styles.jarvisConvo }}">
+        <sc-for list="{{ jarvisMessages }}" as="jm" hint-placeholder-count="3">
+          <div style="{{ jm.rowStyle }}">
+            <div style="{{ jm.bubbleStyle }}">{{ jm.text }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="{{ styles.jarvisInputRow }}">
+        <div style="{{ micBtn.style }}" onClick="{{ micBtn.toggle }}"></div>
+        <input style="{{ styles.jarvisInput }}" placeholder="Scrivi o parla con Jarvis…" value="{{ jarvisInput }}" onChange="{{ onJarvisInputChange }}" onKeyDown="{{ onJarvisInputKeyDown }}"></input>
+        <div style="{{ styles.jarvisSendBtn }}" onClick="{{ sendJarvisMessage }}">→</div>
+      </div>
+      <div style="{{ styles.jarvisChipsRow }}">
+        <sc-for list="{{ jarvisSuggestions }}" as="js" hint-placeholder-count="3">
+          <div style="{{ styles.jarvisChip }}" onClick="{{ js.select }}">{{ js.label }}</div>
+        </sc-for>
+      </div>
+
+      <div style="{{ styles.divider }}"></div>
+
+      <div style="{{ styles.cardHeaderRow }}">
+        <div style="{{ styles.sectionLabel }}">AUTOMAZIONI</div>
+        <div style="{{ styles.jarvisAddAutomationBtn }}" onClick="{{ toggleAddAutomation }}">+ Nuova automazione</div>
+      </div>
+      <sc-if value="{{ addAutomationOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ styles.addAutomationRow }}">
+          <input style="{{ styles.addAutomationTimeInput }}" placeholder="es. Ogni giorno alle 06:00" value="{{ newAutomationTime }}" onChange="{{ onNewAutomationTimeChange }}"></input>
+          <input style="{{ styles.addAutomationActionInput }}" placeholder="cosa deve fare Jarvis…" value="{{ newAutomationAction }}" onChange="{{ onNewAutomationActionChange }}"></input>
+          <div style="{{ styles.addAutomationConfirm }}" onClick="{{ addAutomation }}">Salva</div>
+        </div>
+      </sc-if>
+      <div style="{{ styles.automationList }}">
+        <sc-for list="{{ automations }}" as="au" hint-placeholder-count="3">
+          <div style="{{ styles.automationRow }}">
+            <div style="{{ styles.automationInfo }}">
+              <div style="{{ styles.automationTime }}">{{ au.time }}</div>
+              <div style="{{ styles.automationAction }}">{{ au.action }}</div>
+            </div>
+            <div style="{{ au.toggleStyle }}" onClick="{{ au.toggle }}">
+              <div style="{{ au.knobStyle }}"></div>
+            </div>
+            <sc-if value="{{ au.showDelete }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ styles.automationDelete }}" onClick="{{ au.remove }}">✕</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+
+  <sc-if value="{{ jarvisWindowOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.jarvisWindowOverlay }}" onClick="{{ closeJarvisWindow }}"></div>
+    <div style="{{ styles.jarvisWindow }}">
+      <div style="{{ styles.jarvisWindowHeader }}">
+        <div style="{{ styles.jarvisWindowTitle }}">{{ jarvisWindowTitle }}</div>
+        <div style="{{ styles.jarvisWindowClose }}" onClick="{{ closeJarvisWindow }}">✕</div>
+      </div>
+      <sc-if value="{{ isEmailWindow }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ styles.jarvisWindowBody }}">
+          <sc-for list="{{ jarvisEmails }}" as="em" hint-placeholder-count="3">
+            <div style="{{ styles.emailRow }}">
+              <div style="{{ styles.emailAvatar }}">{{ em.mono }}</div>
+              <div style="{{ styles.emailInfo }}">
+                <div style="{{ styles.emailTopRow }}">
+                  <div style="{{ styles.emailSender }}">{{ em.sender }}</div>
+                  <div style="{{ styles.emailTime }}">{{ em.time }}</div>
+                </div>
+                <div style="{{ styles.emailSubject }}">{{ em.subject }}</div>
+                <div style="{{ styles.emailPreview }}">{{ em.preview }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isReplyWindow }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ styles.draftBody }}">
+          <div style="{{ styles.draftMetaRow }}"><span style="{{ styles.draftMetaLabel }}">A</span>{{ draft.to }}</div>
+          <div style="{{ styles.draftMetaRow }}"><span style="{{ styles.draftMetaLabel }}">Oggetto</span>{{ draft.subject }}</div>
+          <textarea style="{{ styles.draftTextarea }}" value="{{ draft.body }}" onChange="{{ onDraftBodyChange }}"></textarea>
+          <sc-if value="{{ draftModifyOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.draftModifyRow }}">
+              <input style="{{ styles.draftModifyInput }}" placeholder="Come vuoi modificarla? es. rendila più breve" value="{{ draftModifyInstruction }}" onChange="{{ onDraftModifyInstructionChange }}"></input>
+              <div style="{{ styles.draftModifyApply }}" onClick="{{ applyDraftModify }}">Applica</div>
+            </div>
+          </sc-if>
+          <div style="{{ styles.draftActionsRow }}">
+            <div style="{{ styles.draftActionSecondary }}" onClick="{{ toggleDraftModify }}">Modifica</div>
+            <div style="{{ styles.draftActionSecondary }}" onClick="{{ saveDraft }}">Salva in bozza</div>
+            <div style="{{ styles.draftActionPrimary }}" onClick="{{ sendDraft }}">Invia</div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="{{ styles.chatBarWrap }}">
+    <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
+    </sc-if>
+    <div style="{{ styles.chatBar }}">
+      <input style="{{ styles.chatInput }}" placeholder="Chiedi all'AI di LifeOS: aggiungi un evento, controlla il mercato, registra una spesa…" value="{{ chatText }}" onChange="{{ onChatChange }}" onKeyDown="{{ onChatKeyDown }}"></input>
+      <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+function tok(theme) {
+  const dark = theme === 'dark';
+  return {
+    dark,
+    bg: dark ? 'oklch(15% 0.03 280)' : 'oklch(97% 0.006 280)',
+    text1: dark ? 'oklch(97% 0.01 280)' : 'oklch(22% 0.02 280)',
+    text2: dark ? 'oklch(75% 0.02 280)' : 'oklch(46% 0.02 280)',
+    text3: dark ? 'oklch(58% 0.02 280)' : 'oklch(58% 0.02 280)',
+    glassBg: dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)',
+    glassBgSoft: dark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.4)',
+    glassBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)',
+    trackBg: dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
+    accent: dark ? 'oklch(68% 0.20 235)' : 'oklch(55% 0.22 235)',
+    accentSoft: dark ? 'oklch(68% 0.20 235 / 0.18)' : 'oklch(55% 0.22 235 / 0.14)',
+    green: dark ? 'oklch(74% 0.17 150)' : 'oklch(50% 0.16 150)',
+    red: dark ? 'oklch(68% 0.19 25)' : 'oklch(55% 0.20 25)',
+    shadow: dark ? '0 20px 50px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' : '0 20px 40px -14px rgba(60,50,100,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+  };
+}
+
+function buildStyles(theme, habitPct) {
+  const t = tok(theme);
+  const glass = {
+    background: t.glassBg,
+    backdropFilter: 'blur(30px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+    border: `1px solid ${t.glassBorder}`,
+    boxShadow: t.shadow,
+  };
+  const card = { ...glass, borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, color: t.text1 };
+  return {
+    page: {
+      position: 'relative', minHeight: '100vh', width: '100%', overflow: 'hidden',
+      background: t.bg, transition: 'background 0.4s ease',
+    },
+    blobA: { position: 'fixed', top: '-10%', left: '5%', width: 640, height: 640, borderRadius: '50%', background: theme === 'dark' ? 'oklch(55% 0.20 300)' : 'oklch(88% 0.07 300)', filter: 'blur(120px)', opacity: theme === 'dark' ? 0.55 : 0.55, animation: 'blobDrift1 26s ease-in-out infinite' },
+    blobB: { position: 'fixed', top: '20%', right: '0%', width: 560, height: 560, borderRadius: '50%', background: theme === 'dark' ? 'oklch(55% 0.15 200)' : 'oklch(90% 0.06 195)', filter: 'blur(120px)', opacity: 0.5, animation: 'blobDrift2 30s ease-in-out infinite' },
+    blobC: { position: 'fixed', bottom: '-15%', left: '30%', width: 620, height: 620, borderRadius: '50%', background: theme === 'dark' ? 'oklch(48% 0.18 265)' : 'oklch(90% 0.05 340)', filter: 'blur(130px)', opacity: 0.45, animation: 'blobDrift3 34s ease-in-out infinite' },
+    container: { position: 'relative', zIndex: 1, maxWidth: 1440, margin: '0 auto', padding: '0 32px 140px', display: 'flex', flexDirection: 'column', gap: 24 },
+    navWrap: { position: 'relative', zIndex: 1, width: '100%', marginBottom: 24 },
+
+    navbar: { ...glass, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', width: '100%', boxSizing: 'border-box', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: t.text1 },
+    navLeft: { display: 'flex', alignItems: 'center', gap: 32 },
+    logo: { fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em', color: t.text1 },
+    tabRow: { display: 'flex', alignItems: 'center', gap: 6 },
+    tabLink: { display: 'flex' },
+    tab: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 500, color: t.text2, cursor: 'pointer' },
+    tabActive: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600, color: t.text1, background: t.accentSoft, cursor: 'pointer' },
+    navRight: { display: 'flex', alignItems: 'center', gap: 12 },
+    themeSwitch: { width: 42, height: 24, borderRadius: 8, background: t.trackBg, border: `1px solid ${t.glassBorder}`, position: 'relative', cursor: 'pointer', flexShrink: 0 },
+    themeKnob: { position: 'absolute', top: 2, left: theme === 'dark' ? 2 : 20, width: 18, height: 18, borderRadius: 5, background: t.accent, transition: 'left 0.25s ease' },
+    chipLabel: { fontSize: 11, fontWeight: 700, color: t.text3, marginRight: 2 },
+    chipPrice: { fontSize: 13, fontWeight: 700, color: t.text1, marginRight: 4 },
+    clockBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 6 },
+    clockTime: { fontSize: 14, fontWeight: 700, color: t.text1 },
+    clockDate: { fontSize: 12, color: t.text2, marginTop: 2 },
+    navAvatarLink: { display: 'flex', transition: 'transform 0.15s ease' },
+    navAvatarLinkHover: { transform: 'scale(1.06)' },
+    navAvatar: { width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, cursor: 'pointer' },
+    row1: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 },
+    row2: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 },
+    row3: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
+    card,
+    cardLabel: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+    cardHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    cardTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+    sectionLabel: { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase', marginTop: 4 },
+    divider: { height: 1, background: t.glassBorder, margin: '4px 0' },
+
+    sessionTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+    greeting: { fontSize: 32, fontWeight: 700, marginTop: 8, color: t.text1, letterSpacing: '-0.01em' },
+    sessionClockBlock: { textAlign: 'right' },
+    sessionTime: { fontSize: 38, fontWeight: 700, color: t.text1 },
+    todoInputRow: { display: 'flex', gap: 10 },
+    todoInput: { flex: 1, padding: '12px 16px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 14, outline: 'none', fontFamily: 'Inter' },
+    addBtn: { width: 44, height: 44, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 300, cursor: 'pointer', flexShrink: 0 },
+    todoList: { display: 'flex', flexDirection: 'column', gap: 4 },
+
+    checkMark: { width: 10, height: 6, borderLeft: '2px solid white', borderBottom: '2px solid white', transform: 'rotate(-45deg) translate(1px,-1px)' },
+
+    opHeader: { display: 'flex', alignItems: 'center', gap: 14 },
+    avatar: { width: 52, height: 52, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, flexShrink: 0 },
+    opName: { fontSize: 17, fontWeight: 700, color: t.text1 },
+    opSub: { fontSize: 12.5, color: t.text2, marginTop: 2 },
+    focusList: { display: 'flex', flexDirection: 'column', gap: 8 },
+    focusRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, background: t.glassBgSoft },
+    focusDot: { width: 7, height: 7, borderRadius: '50%', background: t.accent, flexShrink: 0 },
+    focusText: { fontSize: 13.5, color: t.text1 },
+    focusEmpty: { fontSize: 13, color: t.text3, padding: '4px 2px' },
+    streakRow: { display: 'flex', alignItems: 'baseline', gap: 6 },
+    streakNum: { fontSize: 30, fontWeight: 800, color: t.text1 },
+    streakUnit: { fontSize: 14, color: t.text2 },
+    dotsRow: { display: 'flex', gap: 8 },
+
+    habitPct: { fontSize: 15, fontWeight: 700, color: t.accent },
+    progressTrack: { height: 10, borderRadius: 999, background: t.trackBg, overflow: 'hidden' },
+    progressFill: { height: '100%', width: habitPct + '%', borderRadius: 999, background: `linear-gradient(90deg, ${t.accent}, oklch(70% 0.18 250))`, transition: 'width 0.5s ease' },
+    habitList: { display: 'flex', flexDirection: 'column', gap: 2 },
+
+    calHeaderRight: { display: 'flex', alignItems: 'center', gap: 16 },
+    legendRow: { display: 'flex', gap: 14 },
+    legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.text2 },
+    legendDotApple: { width: 7, height: 7, borderRadius: '50%', background: 'oklch(62% 0.19 250)' },
+    legendDotReminder: { width: 7, height: 7, borderRadius: '50%', background: 'oklch(70% 0.17 55)' },
+    syncBadge: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.green, background: theme === 'dark' ? 'oklch(74% 0.17 150 / 0.15)' : 'oklch(50% 0.16 150 / 0.1)', padding: '6px 12px', borderRadius: 8 },
+    calPickerWrap: { position: 'relative' },
+    calPickerBtn: { fontSize: 12, fontWeight: 600, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer' },
+    calPickerPanel: { position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: 190, ...glass, borderRadius: 12, padding: 8, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 30 },
+    calPickerRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 8, cursor: 'pointer' },
+    calPickerLabel: { fontSize: 13, color: t.text1 },
+    syncDot: { width: 6, height: 6, borderRadius: '50%', background: t.green },
+    weekGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0, border: `1px solid ${t.glassBorder}`, borderRadius: 8, overflow: 'hidden' },
+    dayCol: { display: 'flex', flexDirection: 'column', borderRight: `1px solid ${t.glassBorder}` },
+    dayName: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase' },
+    dayNum: { fontSize: 15, fontWeight: 700, color: t.text1, marginTop: 2 },
+    dayTrack: { position: 'relative', display: 'flex', flexDirection: 'column', gap: 5, padding: '8px 6px', flex: 1, borderBottom: `1px solid ${t.glassBorder}`, minHeight: 120 },
+    daySectionLabel: { fontSize: 9.5, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 4 },
+    dayFooter: { padding: '7px 8px', display: 'flex', flexDirection: 'column', gap: 6 },
+    dayCount: { fontSize: 10.5, color: t.text2, fontWeight: 600 },
+    dayDotsRow: { display: 'flex', gap: 4, flexWrap: 'wrap' },
+
+    finLink: { fontSize: 12.5, color: t.text2, fontWeight: 600 },
+    finMainRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    finLabel: { fontSize: 12.5, color: t.text2 },
+    finBigNum: { fontSize: 34, fontWeight: 800, color: t.text1, marginTop: 4, letterSpacing: '-0.01em' },
+    finDeltaChip: { fontSize: 13, fontWeight: 700, color: t.green, background: theme === 'dark' ? 'oklch(74% 0.17 150 / 0.15)' : 'oklch(50% 0.16 150 / 0.1)', padding: '8px 14px', borderRadius: 8 },
+    finSecondaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 },
+    finSecLabel: { fontSize: 11.5, color: t.text3 },
+    finSecValue: { fontSize: 16, fontWeight: 700, color: t.text1, marginTop: 4 },
+    sparkline: { width: '100%', height: 44 },
+    sparklineStroke: { stroke: t.accent },
+
+    segmentRow: { display: 'flex', gap: 4, background: t.trackBg, borderRadius: 8, padding: 3 },
+    nutriMainRow: { display: 'flex', gap: 28, alignItems: 'center' },
+    kcalRingOuter: { width: 128, height: 128, borderRadius: '50%', flexShrink: 0, background: `conic-gradient(${t.accent} ${(1850/2400*100).toFixed(1)}%, ${t.trackBg} 0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, boxSizing: 'border-box' },
+    kcalRingInner: { width: '100%', height: '100%', borderRadius: '50%', background: t.bg === 'oklch(15% 0.03 280)' ? 'oklch(15% 0.03 280)' : t.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+    kcalNum: { fontSize: 20, fontWeight: 800, color: t.text1 },
+    kcalTarget: { fontSize: 11, color: t.text2, marginTop: 2 },
+    macrosCol: { flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
+    macroRow: { display: 'flex', flexDirection: 'column', gap: 5 },
+    macroHead: { display: 'flex', justifyContent: 'space-between' },
+    macroName: { fontSize: 12.5, fontWeight: 600, color: t.text2 },
+    macroVal: { fontSize: 12.5, color: t.text2 },
+    macroTrack: { height: 7, borderRadius: 999, background: t.trackBg, overflow: 'hidden' },
+    mealList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
+    mealRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 4px', borderTop: `1px solid ${t.glassBorder}` },
+    mealTime: { fontSize: 12.5, color: t.text3, width: 42, flexShrink: 0 },
+    mealName: { flex: 1, fontSize: 13.5, color: t.text1 },
+    mealKcal: { fontSize: 13, fontWeight: 700, color: t.text2 },
+
+    row4: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
+    schoolList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
+    schoolRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderTop: `1px solid ${t.glassBorder}` },
+    schoolBody: { flex: 1, minWidth: 0 },
+    schoolTitle: { fontSize: 13.5, fontWeight: 700, color: t.text1 },
+    schoolMeta: { fontSize: 12, color: t.text3, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    schoolEmpty: { fontSize: 13, color: t.text3, padding: '10px 4px' },
+    schoolDateChip: { fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' },
+
+    calendarBodyWrap: { position: 'relative' },
+    weekGridWrap: { transition: 'opacity 0.32s ease, transform 0.32s ease' },
+    eventDetailWrap: { position: 'absolute', inset: 0, background: 'transparent', borderRadius: 8, padding: 4, boxSizing: 'border-box', overflow: 'auto', transition: 'opacity 0.32s ease, transform 0.32s ease' },
+    eventDetailBack: { fontSize: 13, fontWeight: 600, color: t.accent, cursor: 'pointer', marginBottom: 18 },
+    mapPlaceholder: {
+      height: 150, borderRadius: 10, border: `1px solid ${t.glassBorder}`, marginTop: 10,
+      background: t.dark
+        ? 'repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 10px, transparent 10px, transparent 20px)'
+        : 'repeating-linear-gradient(135deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 10px, transparent 10px, transparent 20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.text2, fontSize: 12, fontFamily: 'monospace', textAlign: 'center', padding: 12,
+    },
+    modalSourceRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 },
+    modalTitle: { fontSize: 20, fontWeight: 700, marginBottom: 4 },
+    modalRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', fontSize: 13.5 },
+    modalRowLabel: { color: t.text2 },
+    modalRowVal: { color: t.text1, fontWeight: 600 },
+    notifySelect: { background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, color: t.text1, fontSize: 13, fontWeight: 600, padding: '6px 10px', outline: 'none', fontFamily: 'Inter', cursor: 'pointer' },
+
+    jarvisHeaderRow: { display: 'flex', alignItems: 'center', gap: 14 },
+    jarvisAvatar: { width: 44, height: 44, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 },
+    jarvisHeaderText: { flex: 1 },
+    jarvisTitle: { fontSize: 15, fontWeight: 800, color: t.text1, letterSpacing: '0.04em' },
+    jarvisSubtitle: { fontSize: 12.5, color: t.text2, marginTop: 2 },
+    jarvisStatus: { display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 600, color: t.text2 },
+    jarvisStatusDot: { width: 7, height: 7, borderRadius: '50%', background: t.green },
+    jarvisConvo: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto', padding: '2px 2px' },
+    jarvisInputRow: { display: 'flex', gap: 10, alignItems: 'center' },
+    jarvisInput: { flex: 1, padding: '12px 16px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 14, outline: 'none', fontFamily: 'Inter' },
+    jarvisSendBtn: { width: 44, height: 44, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 17 },
+    jarvisChipsRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+    jarvisChip: { fontSize: 12, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 999, padding: '6px 13px', cursor: 'pointer' },
+    jarvisAddAutomationBtn: { fontSize: 12.5, fontWeight: 700, color: t.accent, cursor: 'pointer' },
+    addAutomationRow: { display: 'flex', gap: 10 },
+    addAutomationTimeInput: { flex: 1, padding: '10px 14px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter' },
+    addAutomationActionInput: { flex: 2, padding: '10px 14px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter' },
+    addAutomationConfirm: { fontSize: 12.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' },
+    automationList: { display: 'flex', flexDirection: 'column', gap: 2 },
+    automationRow: { display: 'flex', alignItems: 'center', gap: 14, padding: '11px 4px', borderTop: `1px solid ${t.glassBorder}` },
+    automationInfo: { flex: 1 },
+    automationTime: { fontSize: 11.5, fontWeight: 700, color: t.accent, textTransform: 'uppercase', letterSpacing: '0.02em' },
+    automationAction: { fontSize: 13.5, color: t.text1, marginTop: 3 },
+    automationDelete: { fontSize: 12, color: t.text3, cursor: 'pointer', padding: 4 },
+
+    jarvisWindowOverlay: { position: 'fixed', inset: 0, background: theme === 'dark' ? 'rgba(0,0,0,0.45)' : 'rgba(20,20,30,0.25)', zIndex: 55, animation: 'fadeUp 0.2s ease' },
+    jarvisWindow: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 480, maxHeight: '70vh', ...glass, borderRadius: 20, zIndex: 56, padding: 24, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 16, color: t.text1, animation: 'fadeUp 0.25s ease' },
+    jarvisWindowHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+    jarvisWindowTitle: { fontSize: 16, fontWeight: 700, color: t.text1 },
+    jarvisWindowClose: { fontSize: 13, color: t.text3, cursor: 'pointer', padding: 6 },
+    jarvisWindowBody: { display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto' },
+    emailRow: { display: 'flex', gap: 12, padding: '12px 4px', borderTop: `1px solid ${t.glassBorder}` },
+    emailAvatar: { width: 34, height: 34, borderRadius: '50%', background: t.accentSoft, color: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 },
+    emailInfo: { flex: 1, minWidth: 0 },
+    emailTopRow: { display: 'flex', justifyContent: 'space-between', gap: 8 },
+    emailSender: { fontSize: 13.5, fontWeight: 700, color: t.text1 },
+    emailTime: { fontSize: 11.5, color: t.text3, flexShrink: 0 },
+    emailSubject: { fontSize: 13, color: t.text1, marginTop: 2 },
+    emailPreview: { fontSize: 12, color: t.text2, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    draftBody: { display: 'flex', flexDirection: 'column', gap: 10 },
+    draftMetaRow: { fontSize: 13, color: t.text1 },
+    draftMetaLabel: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', marginRight: 10, letterSpacing: '0.04em' },
+    draftTextarea: { width: '100%', minHeight: 140, padding: '12px 14px', borderRadius: 12, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, lineHeight: 1.5, outline: 'none', fontFamily: 'Inter', boxSizing: 'border-box', resize: 'vertical' },
+    draftModifyRow: { display: 'flex', gap: 8 },
+    draftModifyInput: { flex: 1, padding: '10px 14px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13, outline: 'none', fontFamily: 'Inter' },
+    draftModifyApply: { fontSize: 12.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' },
+    draftActionsRow: { display: 'flex', gap: 10, marginTop: 4 },
+    draftActionSecondary: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 10, padding: '10px 0', cursor: 'pointer' },
+    draftActionPrimary: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '10px 0', cursor: 'pointer' },
+
+    chatBarWrap: { position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', width: 'min(640px, 92vw)', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 10 },
+    replyBubble: { ...glass, borderRadius: 14, padding: '12px 16px', fontSize: 13.5, lineHeight: 1.5, color: t.text1, width: '100%', boxSizing: 'border-box' },
+    chatBar: { ...glass, borderRadius: 14, padding: '8px 8px 8px 18px', display: 'flex', alignItems: 'center', gap: 10 },
+    chatInput: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: t.text1, fontSize: 14, fontFamily: 'Inter' },
+    chatSend: { width: 38, height: 38, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16 },
+  };
+}
+
+function fmtEur(v) { return '€ ' + Math.round(v).toLocaleString('it-IT'); }
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
+// Local Y-M-D, not toISOString() (UTC) — a habit checked at 23:50 shouldn't
+// land on tomorrow just because the server is a couple of hours ahead in UTC.
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+class Component extends DCLogic {
+  state = {
+    theme: (window.LifeOSJarvis && window.LifeOSJarvis.getTheme) ? window.LifeOSJarvis.getTheme() : 'dark',
+    now: new Date(),
+    todos: [], // real only — refreshLifeOSData/addTodo populate this from lifeos-store.mjs's reminders
+    newTodo: '',
+    habits: [], // real — la lista si edita da Profilo, "fatto" è per giorno (lastDoneDate)
+    nutritionMode: 'MANTENIMENTO',
+    selectedEvent: null,
+    notifyMinutes: '15',
+    chatText: '',
+    lastReply: null,
+    jarvisInput: '',
+    isListening: false,
+    jarvisMessages: [
+      { from: 'jarvis', text: 'Buongiorno Daniele. Oggi hai 3 impegni e la palestra alle 18:00.' },
+      { from: 'user', text: 'Mostrami le email' },
+      { from: 'jarvis', text: 'Ecco le email non lette che meritano attenzione.' },
+    ],
+    addAutomationOpen: false,
+    newAutomationTime: '', newAutomationAction: '',
+    // Real only — refreshLifeOSData populates this from hermes-agent's own
+    // crontab/systemd timers (see bridge/lifeos-automations.mjs). Manually
+    // added ones (addAutomation below) are appended on top, client-side.
+    automations: [],
+    jarvisWindowOpen: false,
+    jarvisWindowType: 'email',
+    draft: { to: 'Marco Ferretti', subject: 'Re: Revisione contratto cliente', body: 'Ciao Marco,\n\ngrazie per la revisione, mi sembra tutto in ordine. Possiamo procedere con la firma entro venerdì?\n\nA presto,\nDaniele' },
+    draftModifyOpen: false, draftModifyInstruction: '',
+    realEvents: null, realReminders: null,
+    availableCalendars: [], visibleCalendars: null, calendarPickerOpen: false, calendarColors: {},
+    marketPulse: {},
+    didupVerifiche: [], didupCompiti: [],
+    accounts: [], liabilities: [], assets: [], realTransactions: [],
+  };
+
+  componentDidMount() {
+    this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    this.refreshLifeOSData();
+  }
+
+  // Shared by the initial mount and by onChatSubmit after a successful
+  // write — re-reads the same /api/lifeos-data a reload would, so a freshly
+  // added event or reminder shows up in exactly the shape and format it was
+  // actually saved in, rather than a hand-built approximation that can drift
+  // from what listEvents/listReminders actually return.
+  refreshLifeOSData = () => {
+    return window.LifeOSJarvis.fetchData().then(data => {
+      const patch = {
+        realEvents: data.events || [], realReminders: data.reminders || [], marketPulse: data.marketPulse || {},
+        didupVerifiche: data.didupVerifiche || [], didupCompiti: data.didupCompiti || [],
+        accounts: data.accounts || [], liabilities: data.liabilities || [], assets: data.assets || [],
+        realTransactions: data.transactions || [], habits: data.habits || [],
+      };
+      const available = data.calendarNames || [];
+      patch.availableCalendars = available;
+      patch.calendarColors = data.calendarColors || {};
+      const saved = window.LifeOSJarvis.getVisibleCalendars();
+      patch.visibleCalendars = saved && saved.length ? saved.filter(n => available.includes(n)) : available;
+      this.setState(s => ({
+        ...patch,
+        // Drop any reminder-sourced todos from the previous fetch before
+        // re-adding the current set, so calling this more than once never
+        // duplicates them; manually-typed todos (no `source`) are untouched.
+        todos: [
+          ...s.todos.filter(t => t.source !== 'reminder'),
+          ...(data.reminders || []).map(r => ({ id: r.id, text: r.text, done: r.done, source: 'reminder' })),
+        ],
+        // Same idea for automations: the real ones (cron/systemd on
+        // hermes-agent) are replaced wholesale on every fetch so their
+        // enabled/failed status stays current; anything added by hand in
+        // the + Nuova automazione box (no `real` flag) is left alone.
+        automations: [
+          ...(data.automations || []),
+          ...s.automations.filter(a => !a.real),
+        ],
+      }));
+    }).catch(() => {});
+  };
+  componentWillUnmount() {
+    clearInterval(this._timer);
+  }
+
+  toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
+  // Scrivere qui crea un vero promemoria (lo stesso store che usa Jarvis in
+  // chat con "add_reminder"), non una riga che sparisce al reload: la riga
+  // appare subito (ottimistica), poi refreshLifeOSData() la sostituisce con
+  // quella confermata dal server — se il salvataggio fallisce, la si toglie.
+  addTodo = () => {
+    const text = this.state.newTodo.trim();
+    if (!text) return;
+    this.setState({ newTodo: '' });
+    const tempId = Date.now();
+    this.setState(s => ({ todos: [...s.todos, { id: tempId, text, done: false, source: 'reminder' }] }));
+    window.LifeOSJarvis.addReminder(text)
+      .then(() => this.refreshLifeOSData())
+      .catch(() => this.setState(s => ({ todos: s.todos.filter(x => x.id !== tempId) })));
+  };
+  // Spuntarla la cancella per davvero (vedi completeReminder in
+  // lifeos-store.mjs: un promemoria fatto viene rimosso, non solo segnato).
+  toggleTodo = (id) => {
+    this.setState(s => ({ todos: s.todos.filter(x => x.id !== id) }));
+    window.LifeOSJarvis.completeReminder(id).catch(() => this.refreshLifeOSData());
+  };
+  // Persistito per davvero (vedi updateHabit in lifeos-store.mjs) — "fatto"
+  // è la data di oggi sull'abitudine, non un booleano, così il riquadro
+  // riparte vuoto ogni giorno da solo invece di restare spuntato per sempre.
+  toggleHabit = (id) => {
+    const today = localDateStr(this.state.now);
+    const habit = this.state.habits.find(h => h.id === id);
+    if (!habit) return;
+    const nextDate = habit.lastDoneDate === today ? null : today;
+    this.setState(s => ({ habits: s.habits.map(h => h.id === id ? { ...h, lastDoneDate: nextDate } : h) }));
+    window.LifeOSJarvis.financeOp('habits', 'update', { id, data: { lastDoneDate: nextDate } })
+      .catch(() => this.refreshLifeOSData());
+  };
+  setNutritionMode = (mode) => this.setState({ nutritionMode: mode });
+  openEvent = (ev) => this.setState({ selectedEvent: ev, notifyMinutes: '15' });
+  closeEvent = () => this.setState({ selectedEvent: null });
+  setNotifyMinutes = (v) => this.setState({ notifyMinutes: v });
+  toggleCalendarPicker = () => this.setState(s => ({ calendarPickerOpen: !s.calendarPickerOpen }));
+  toggleCalendar = (name) => this.setState(s => {
+    const has = s.visibleCalendars.includes(name);
+    const visibleCalendars = has ? s.visibleCalendars.filter(n => n !== name) : [...s.visibleCalendars, name];
+    window.LifeOSJarvis.setVisibleCalendars(visibleCalendars);
+    return { visibleCalendars };
+  });
+  onChatSubmit = () => {
+    const text = this.state.chatText.trim();
+    if (!text) return;
+    this.setState({ chatText: '', lastReply: null });
+    window.LifeOSJarvis.ask(text, null, 'home').then(reply => {
+      this.setState({ lastReply: reply.text || '...' });
+      // Something was actually written — pull the real state back rather
+      // than guess at it, so the grid never shows anything the server
+      // didn't actually save (see refreshLifeOSData above).
+      if (reply.action && reply.data) this.refreshLifeOSData();
+    }).catch(err => {
+      this.setState({ lastReply: 'Non riesco a rispondere: ' + err.message });
+    });
+  };
+
+  toggleListening = () => this.setState(s => ({ isListening: !s.isListening }));
+  closeJarvisWindow = () => this.setState({ jarvisWindowOpen: false, draftModifyOpen: false });
+  toggleDraftModify = () => this.setState(s => ({ draftModifyOpen: !s.draftModifyOpen }));
+  applyDraftModify = () => {
+    const instr = this.state.draftModifyInstruction.trim();
+    if (!instr) return;
+    this.setState(s => ({ draft: { ...s.draft, body: s.draft.body + '\n\n[Modifica applicata: ' + instr + ']' }, draftModifyInstruction: '', draftModifyOpen: false }));
+  };
+  saveDraft = () => {
+    this.setState(s => ({ jarvisWindowOpen: false, draftModifyOpen: false, jarvisMessages: [...s.jarvisMessages, { from: 'jarvis', text: 'Bozza salvata in Posta in arrivo.' }] }));
+  };
+  sendDraft = () => {
+    this.setState(s => ({ jarvisWindowOpen: false, draftModifyOpen: false, jarvisMessages: [...s.jarvisMessages, { from: 'jarvis', text: 'Email inviata a ' + s.draft.to + '.' }] }));
+  };
+  sendJarvisMessage = (text) => {
+    const msg = (text || this.state.jarvisInput).trim();
+    if (!msg) return;
+    this.setState(s => ({
+      jarvisMessages: [...s.jarvisMessages, { from: 'user', text: msg }],
+      jarvisInput: '', isListening: false,
+    }));
+    window.LifeOSJarvis.ask(msg).then(reply => {
+      this.setState(s => ({ jarvisMessages: [...s.jarvisMessages, { from: 'jarvis', text: reply.text || '...' }] }));
+    }).catch(err => {
+      this.setState(s => ({ jarvisMessages: [...s.jarvisMessages, { from: 'jarvis', text: 'Non riesco a rispondere: ' + err.message }] }));
+    });
+  };
+  toggleAddAutomation = () => this.setState(s => ({ addAutomationOpen: !s.addAutomationOpen }));
+  addAutomation = () => {
+    const time = this.state.newAutomationTime.trim(), action = this.state.newAutomationAction.trim();
+    if (!time || !action) return;
+    this.setState(s => ({ automations: [...s.automations, { id: Date.now(), time: time.toUpperCase(), action, enabled: true }], newAutomationTime: '', newAutomationAction: '', addAutomationOpen: false }));
+  };
+  toggleAutomation = (id) => this.setState(s => ({ automations: s.automations.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a) }));
+  removeAutomation = (id) => this.setState(s => ({ automations: s.automations.filter(a => a.id !== id) }));
+
+  renderVals() {
+    const s = this.state;
+    const t = tok(s.theme);
+    const todayStr = localDateStr(s.now);
+    // A habit with no days configured applies every day (the original,
+    // unscoped behaviour) — one with specific days only counts toward
+    // today's list/percentage on a day it's actually scheduled for, so
+    // e.g. a Mon/Wed/Fri gym habit doesn't drag the ring down on a Tuesday.
+    const todayDow = s.now.getDay();
+    const habitsToday = s.habits.filter(h => !h.days || !h.days.length || h.days.includes(todayDow));
+    const habitDone = habitsToday.filter(h => h.lastDoneDate === todayStr).length;
+    const habitPct = habitsToday.length ? Math.round((habitDone / habitsToday.length) * 100) : 0;
+    const styles = buildStyles(s.theme, habitPct);
+    const hasSelectedEvent = !!s.selectedEvent;
+    styles.weekGridWrap = { ...styles.weekGridWrap, opacity: hasSelectedEvent ? 0 : 1, transform: hasSelectedEvent ? 'translateX(-14px)' : 'translateX(0)', pointerEvents: hasSelectedEvent ? 'none' : 'auto' };
+    styles.eventDetailWrap = { ...styles.eventDetailWrap, opacity: hasSelectedEvent ? 1 : 0, transform: hasSelectedEvent ? 'translateX(0)' : 'translateX(14px)', pointerEvents: hasSelectedEvent ? 'auto' : 'none' };
+
+    const timeStr = s.now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = s.now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+      .replace(/^./, c => c.toUpperCase());
+    const hour = s.now.getHours();
+    const greeting = hour < 12 ? 'Buongiorno, Daniele' : hour < 18 ? 'Buon pomeriggio, Daniele' : 'Buonasera, Daniele';
+
+    const todos = s.todos.map(td => ({
+      id: td.id, text: td.text, done: td.done,
+      rowStyle: { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 6px', borderRadius: 12, cursor: 'pointer' },
+      checkStyle: { width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${td.done ? t.accent : t.glassBorder}`, background: td.done ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s ease' },
+      textStyle: { fontSize: 14, color: td.done ? t.text3 : t.text1, textDecoration: td.done ? 'line-through' : 'none', transition: 'color 0.2s ease' },
+      toggle: () => this.toggleTodo(td.id),
+    }));
+
+    const habits = habitsToday.map(h => {
+      const done = h.lastDoneDate === todayStr;
+      const count = h.doneCount || 0;
+      return {
+        id: h.id, name: `${h.name} · ${count}${count === 1 ? ' volta' : ' volte'}`, done,
+        rowStyle: { display: 'flex', alignItems: 'center', gap: 12, padding: '9px 6px', borderRadius: 12, cursor: 'pointer' },
+        checkStyle: { width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${done ? t.accent : t.glassBorder}`, background: done ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s ease', transform: done ? 'scale(1)' : 'scale(0.95)' },
+        labelStyle: { fontSize: 14, color: done ? t.text2 : t.text1, textDecoration: done ? 'line-through' : 'none' },
+        toggle: () => this.toggleHabit(h.id),
+      };
+    });
+    const hasHabits = habitsToday.length > 0;
+    const habitsEmptyLabel = s.habits.length === 0
+      ? 'Nessuna abitudine impostata — aggiungile dal profilo.'
+      : 'Nessuna abitudine per oggi.';
+
+
+    function chip(price, changePct) {
+      const positive = changePct >= 0;
+      return {
+        chipStyle: { display: 'flex', alignItems: 'center', gap: 4, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, padding: '7px 12px' },
+        price,
+        change: (positive ? '+' : '') + changePct.toFixed(1) + '%',
+        arrowStyle: { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: positive ? `5px solid ${t.green}` : 'none', borderTop: positive ? 'none' : `5px solid ${t.red}`, display: 'inline-block' },
+        deltaStyle: { fontSize: 12.5, fontWeight: 700, color: positive ? t.green : t.red },
+      };
+    }
+    // Real market pulse (see marketPulse in server.mjs's /api/lifeos-data) —
+    // this used to be fixed fictional numbers. "—" only until the first
+    // fetch lands.
+    const pulseEur = (v, decimals) => '€ ' + v.toFixed(decimals).replace('.', ',');
+    const btc = s.marketPulse.btc ? chip(pulseEur(s.marketPulse.btc.price, 0), s.marketPulse.btc.d24) : chip('—', 0);
+    const eunl = s.marketPulse.eunl ? chip(pulseEur(s.marketPulse.eunl.price, 2), s.marketPulse.eunl.d24) : chip('—', 0);
+
+    const weekdayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+    const usingRealData = s.realEvents !== null;
+    const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const visible = new Set(s.visibleCalendars || []);
+    const realEventsOnDay = (d) => (s.realEvents || [])
+      .filter(e => visible.has(e.calendar) && e.when && sameDay(new Date(e.when), d))
+      .map(e => ({
+        time: e.when.slice(11, 16), endTime: e.until ? e.until.slice(11, 16) : null,
+        title: e.title, source: 'apple', location: e.location, calendar: e.calendar,
+      }));
+    const realRemindersOnDay = (d) => (s.realReminders || [])
+      .filter(r => r.when && sameDay(new Date(r.when), d))
+      .map(r => ({
+        // Unlike events' floating-time CalDAV strings, a reminder's `when` is
+        // a real UTC instant (see lifeos-store.mjs) — slicing the digits out
+        // of it shows UTC, not local time, so it has to go through Date.
+        time: new Date(r.when).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+        title: r.text, source: 'reminder', id: r.id,
+      }));
+
+    const today = new Date(s.now);
+
+    // FOCUS DI OGGI — real Apple Calendar events happening today plus
+    // not-yet-done reminders due today, time-sorted. An undated reminder
+    // never lands here (quick-add todos with no due date belong in the
+    // TODO list above, not a time-ordered focus queue).
+    const focusItems = usingRealData
+      ? [
+          ...realEventsOnDay(today).map(e => ({ sortKey: e.time, text: `${e.title} alle ${e.time}` })),
+          ...(s.realReminders || [])
+            .filter(r => !r.done && r.when && sameDay(new Date(r.when), today))
+            .map(r => ({ sortKey: new Date(r.when).toTimeString().slice(0, 5), text: r.text })),
+        ].sort((a, b) => a.sortKey.localeCompare(b.sortKey)).slice(0, 5).map(x => x.text)
+      : [];
+    const hasFocus = focusItems.length > 0;
+
+    // STREAK ABITUDINI — consecutive days, walking back from today (or from
+    // yesterday if today isn't finished yet, so an incomplete today doesn't
+    // zero out the count before the day is even over), where every habit
+    // scheduled that day was actually checked done. A day with nothing
+    // scheduled counts as satisfied — same as a rest day not breaking a
+    // real streak. Needs doneDates (see lifeos-store.mjs's updateHabit);
+    // lastDoneDate is folded in too so a habit's most recent check still
+    // counts even for one logged before doneDates existed.
+    const dayKeyFor = (d) => localDateStr(d);
+    const habitDoneDatesOf = (h) => new Set([...(h.doneDates || []), ...(h.lastDoneDate ? [h.lastDoneDate] : [])]);
+    const dayIsSuccess = (d) => {
+      const applicable = s.habits.filter(h => !h.days || !h.days.length || h.days.includes(d.getDay()));
+      if (!applicable.length) return true;
+      const key = dayKeyFor(d);
+      return applicable.every(h => habitDoneDatesOf(h).has(key));
+    };
+    let streakCount = 0;
+    if (s.habits.length) {
+      const cursor = new Date(today);
+      if (!dayIsSuccess(cursor)) cursor.setDate(cursor.getDate() - 1);
+      while (dayIsSuccess(cursor)) {
+        streakCount++;
+        cursor.setDate(cursor.getDate() - 1);
+        if (streakCount > 3650) break; // sanity cap, not a real limit
+      }
+    }
+    const streakDots = [6, 5, 4, 3, 2, 1, 0].map(offset => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - offset);
+      const ok = s.habits.length > 0 && dayIsSuccess(d);
+      return { style: { width: 9, height: 9, borderRadius: '50%', background: ok ? t.accent : t.trackBg } };
+    });
+
+    const nowHourFrac = s.now.getHours() + s.now.getMinutes() / 60;
+    const rowStyle = (color) => ({ borderLeft: `2px solid ${color}`, padding: '5px 7px', background: t.glassBgSoft });
+    const DEFAULT_APPLE_COLOR = 'oklch(62% 0.19 250)';
+    const REMINDER_COLOR = 'oklch(70% 0.17 55)';
+    // Each event's own iCloud calendar color (see listCalendarColors in
+    // lifeos-caldav.mjs) rather than one fixed blue for every Apple event —
+    // falls back to the old default for a calendar whose color didn't load.
+    const calendarColor = (name) => s.calendarColors[name] || DEFAULT_APPLE_COLOR;
+    const calendarDays = [0, 1, 2, 3, 4, 5, 6].map(offset => {
+      const d = new Date(today);
+      d.setDate(today.getDate() + offset);
+      const isToday = offset === 0;
+      // Empty rather than invented while the real fetch is still in flight
+      // (s.realEvents starts out null) — a placeholder that looks like a
+      // real appointment is worse than a blank cell for a moment.
+      const apple = usingRealData ? realEventsOnDay(d) : [];
+      const reminder = usingRealData ? realRemindersOnDay(d) : [];
+      const dayItems = [...apple, ...reminder];
+      const dayLabel = weekdayNames[d.getDay()] + ' ' + d.getDate();
+      const mkRow = (color, sourceLabel) => (ev) => ({
+        time: ev.time, title: ev.title,
+        style: { ...rowStyle(color), cursor: 'pointer' },
+        timeStyle: { fontSize: 10.5, fontWeight: 700, color: t.text2 },
+        titleStyle: { fontSize: 11.5, color: t.text1, marginTop: 1, lineHeight: 1.25 },
+        onClick: () => this.openEvent({
+          title: ev.title,
+          time: (ev.time || '—') + (ev.endTime ? ' – ' + ev.endTime : ''),
+          dayLabel, source: sourceLabel, color, location: ev.location || '', hasLocation: !!ev.location,
+        }),
+      });
+      const events = apple.map(ev => mkRow(calendarColor(ev.calendar), ev.calendar || 'Apple Calendar')(ev));
+      const todos = reminder.map(mkRow(REMINDER_COLOR, 'Promemoria'));
+      const total = dayItems.length;
+      const dots = dayItems.map(ev => ({ style: { width: 6, height: 6, borderRadius: '50%', background: ev.source === 'apple' ? calendarColor(ev.calendar) : REMINDER_COLOR } }));
+      const showLine = isToday && nowHourFrac >= 8 && nowHourFrac <= 22;
+      return {
+        name: weekdayNames[d.getDay()], num: d.getDate(),
+        headerStyle: { padding: '6px 8px', borderBottom: `2px solid ${isToday ? t.accent : t.glassBorder}`, background: isToday ? t.accentSoft : 'transparent' },
+        showLine,
+        lineStyle: { position: 'absolute', left: 0, right: 0, top: ((nowHourFrac - 8) / 14 * 100) + '%', height: 2, background: t.red, zIndex: 2 },
+        events, todos, total, dots,
+      };
+    });
+
+    const calendarOptions = s.availableCalendars.map(name => {
+      const checked = (s.visibleCalendars || []).includes(name);
+      return {
+        name, checked,
+        checkStyle: { width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${checked ? t.accent : t.glassBorder}`, background: checked ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+        dotStyle: { width: 8, height: 8, borderRadius: '50%', background: calendarColor(name), flexShrink: 0 },
+        toggle: () => this.toggleCalendar(name),
+      };
+    });
+
+    // Stessa formula di Finanze.dc.html (patrimonio = liquidità + investito −
+    // passività), sugli stessi dati reali dello store — questa card è
+    // un'anteprima di quella pagina, non un numero separato da tenere
+    // allineato a mano.
+    const allAccountsTotal = s.accounts.reduce((sum, a) => sum + a.balance, 0);
+    const liabTotal = s.liabilities.reduce((sum, l) => sum + l.resid, 0);
+    const assetData = s.assets.map(a => ({ ...a, value: (Number(a.qty) || 0) * (Number(a.price) || 0) }));
+    const investTotalAmt = assetData.reduce((sum, a) => sum + a.value, 0);
+    const netWorthTotal = allAccountsTotal + investTotalAmt - liabTotal;
+
+    const nowD = s.now;
+    let monthIncome = 0, monthExpense = 0;
+    for (const tx of s.realTransactions) {
+      const d = new Date(tx.date);
+      if (d.getFullYear() !== nowD.getFullYear() || d.getMonth() !== nowD.getMonth()) continue;
+      if (tx.type === 'entrata') monthIncome += tx.amount; else monthExpense += tx.amount;
+    }
+    const savingsRate = monthIncome > 0 ? Math.round(((monthIncome - monthExpense) / monthIncome) * 100) : 0;
+    const finSecondary = [
+      { label: 'Entrate', value: fmtEur(monthIncome) },
+      { label: 'Uscite', value: fmtEur(monthExpense) },
+      { label: 'Risparmio', value: savingsRate + '%' },
+      { label: 'Investimenti', value: fmtEur(investTotalAmt) },
+    ];
+
+    // Serie reale del patrimonio (stesso metodo di combinedPortfolioSeries in
+    // Finanze.dc.html): il valore investito segue lo storico prezzi reale di
+    // ogni asset dal giorno del suo acquisto; liquidità/passività non hanno
+    // storico, quindi restano un offset costante sopra quella linea.
+    const portfolioSeries = (() => {
+      const allDays = new Set();
+      for (const a of assetData) for (const p of (a.priceHistory || [])) allDays.add(p.date.slice(0, 10));
+      if (!allDays.size) return null;
+      const days = [...allDays].sort();
+      const perAsset = assetData.map(a => ({
+        points: (a.priceHistory || []).map(p => ({ day: p.date.slice(0, 10), price: p.price })),
+        lots: [...(a.lots || [])].map(l => ({ day: (l.date || '').slice(0, 10), qty: Number(l.qty) || 0 })).sort((x, y) => x.day.localeCompare(y.day)),
+      }));
+      return days.map(day => {
+        let total = 0;
+        for (const { points, lots } of perAsset) {
+          let price = null;
+          for (const p of points) { if (p.day <= day) price = p.price; else break; }
+          if (price == null) continue;
+          let qty = 0;
+          for (const l of lots) { if (l.day <= day) qty += l.qty; }
+          total += qty * price;
+        }
+        return total;
+      });
+    })();
+    const netWorthSeries = (portfolioSeries && portfolioSeries.length >= 2)
+      ? portfolioSeries.slice(-30).map(v => v + (allAccountsTotal - liabTotal))
+      : [netWorthTotal, netWorthTotal];
+    const periodDelta = netWorthSeries[netWorthSeries.length - 1] - netWorthSeries[0];
+    const periodDeltaPct = netWorthSeries[0] ? (periodDelta / Math.abs(netWorthSeries[0])) * 100 : 0;
+    const finDeltaText = fmtEur(Math.abs(periodDelta)) + ' · ' + fmtPct(periodDeltaPct);
+    const finDeltaPositive = periodDelta >= 0;
+    const max = Math.max(...netWorthSeries), min = Math.min(...netWorthSeries);
+    const sparklinePoints = netWorthSeries.map((v, i) => {
+      const x = netWorthSeries.length > 1 ? (i / (netWorthSeries.length - 1)) * 300 : 0;
+      const y = max > min ? 44 - ((v - min) / (max - min)) * 40 : 22;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    const modeKeys = ['CUT', 'BULK', 'MANTENIMENTO'];
+    const nutritionModes = modeKeys.map(k => ({
+      label: k, key: k,
+      style: { padding: '7px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', background: s.nutritionMode === k ? t.accent : 'transparent', color: s.nutritionMode === k ? 'white' : t.text2, transition: 'all 0.2s ease' },
+      select: () => this.setNutritionMode(k),
+    }));
+
+    const macroData = [
+      { name: 'PROTEINE', consumed: 142, target: 160 },
+      { name: 'CARBOIDRATI', consumed: 180, target: 240 },
+      { name: 'GRASSI', consumed: 58, target: 70 },
+    ];
+    const macros = macroData.map(m => ({
+      name: m.name, consumed: m.consumed, target: m.target,
+      fillStyle: { height: '100%', width: Math.min(100, (m.consumed / m.target) * 100) + '%', borderRadius: 999, background: t.accent },
+    }));
+
+    const meals = [
+      { time: '08:00', name: 'Colazione', kcal: 520 },
+      { time: '13:00', name: 'Pranzo', kcal: 680 },
+      { time: '16:30', name: 'Spuntino', kcal: 210 },
+      { time: '20:00', name: 'Cena', kcal: 440 },
+    ];
+
+    // "Filtrato per importanza": più vicina è la scadenza, più urgente è la
+    // riga — le liste arrivano già ordinate per data da fetchVerifiche/
+    // fetchCompiti (lato bridge), qui si tronca e si colora.
+    const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+    const dateChipFor = (dataStr) => {
+      const d = new Date(dataStr + 'T00:00:00');
+      const giorni = Math.round((d - oggi) / 86400000);
+      const label = giorni === 0 ? 'Oggi' : giorni === 1 ? 'Domani'
+        : giorni < 0 ? d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+        : d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/^./, c => c.toUpperCase());
+      const urgente = giorni <= 1;
+      const vicino = giorni > 1 && giorni <= 3;
+      const bg = urgente ? (t.dark ? 'oklch(68% 0.19 25 / 0.18)' : 'oklch(55% 0.20 25 / 0.14)')
+        : vicino ? (t.dark ? 'oklch(80% 0.17 85 / 0.18)' : 'oklch(65% 0.17 85 / 0.16)')
+        : t.trackBg;
+      const color = urgente ? t.red : vicino ? (t.dark ? 'oklch(80% 0.17 85)' : 'oklch(50% 0.15 85)') : t.text2;
+      return { label, style: { ...styles.schoolDateChip, background: bg, color } };
+    };
+    const verificheRows = s.didupVerifiche.slice(0, 6).map(v => {
+      const chip = dateChipFor(v.data);
+      return {
+        title: v.materia || 'Verifica', meta: v.docente || '', dateLabel: chip.label, dateStyle: chip.style,
+      };
+    });
+    const compitiRows = s.didupCompiti.slice(0, 6).map(c => {
+      const chip = dateChipFor(c.data);
+      return {
+        title: c.materia || 'Compito', meta: c.compito || '', dateLabel: chip.label, dateStyle: chip.style,
+      };
+    });
+
+    const jarvisMessages = s.jarvisMessages.map(jm => ({
+      text: jm.text,
+      rowStyle: { display: 'flex', justifyContent: jm.from === 'user' ? 'flex-end' : 'flex-start' },
+      bubbleStyle: { maxWidth: '78%', fontSize: 13.5, lineHeight: 1.45, padding: '10px 14px', borderRadius: 14, color: jm.from === 'user' ? 'white' : t.text1, background: jm.from === 'user' ? t.accent : t.glassBgSoft, border: jm.from === 'user' ? 'none' : `1px solid ${t.glassBorder}` },
+    }));
+    const micBtn = {
+      style: { width: 44, height: 44, borderRadius: 10, background: s.isListening ? t.red : t.glassBgSoft, border: `1px solid ${s.isListening ? t.red : t.glassBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16, color: s.isListening ? 'white' : t.text2, transition: 'all 0.2s ease' },
+      toggle: this.toggleListening,
+    };
+    const jarvisSuggestions = ['Mostrami le email', 'Rispondi a Marco', 'Aggiungi un\'automazione'].map(label => ({
+      label, select: () => label === 'Aggiungi un\'automazione' ? this.setState({ addAutomationOpen: true }) : this.sendJarvisMessage(label),
+    }));
+    const automations = s.automations.map(au => ({
+      time: au.time, action: au.action,
+      // Real automations (from hermes-agent's own crontab/systemd timers)
+      // report their actual enabled/failed state and aren't editable from
+      // here — this card only reads cron/systemctl, it never writes to
+      // either. Only hand-added ones (+ Nuova automazione) stay interactive.
+      toggleStyle: {
+        width: 38, height: 22, borderRadius: 7,
+        background: au.failed ? t.red : (au.enabled ? t.accent : t.trackBg),
+        border: `1px solid ${t.glassBorder}`, position: 'relative', flexShrink: 0,
+        cursor: au.real ? 'default' : 'pointer', opacity: au.real ? 0.9 : 1, transition: 'background 0.2s ease',
+      },
+      knobStyle: { position: 'absolute', top: 2, left: au.enabled ? 18 : 2, width: 16, height: 16, borderRadius: 4, background: 'white', transition: 'left 0.2s ease' },
+      toggle: au.real ? () => {} : () => this.toggleAutomation(au.id),
+      remove: au.real ? () => {} : () => this.removeAutomation(au.id),
+      showDelete: !au.real,
+    }));
+    const jarvisEmails = [
+      { sender: 'Marco Ferretti', mono: 'MF', subject: 'Revisione contratto cliente', preview: 'Ciao Daniele, ho rivisto le clausole e...', time: '13:42' },
+      { sender: 'ING Direct', mono: 'IN', subject: 'Estratto conto disponibile', preview: 'Il tuo estratto conto di settembre è pronto...', time: '11:05' },
+      { sender: 'Team Palestra', mono: 'FC', subject: 'Nuovo orario corsi', preview: 'A partire da lunedì il corso delle 18:00...', time: '09:20' },
+    ].map(em => ({ ...em }));
+
+    return {
+      styles, timeStr, dateStr, greeting,
+      calendarOptions, calendarPickerOpen: s.calendarPickerOpen, toggleCalendarPicker: this.toggleCalendarPicker,
+      newTodo: s.newTodo,
+      onNewTodoChange: (e) => this.setState({ newTodo: e.target.value }),
+      onNewTodoKeyDown: (e) => { if (e.key === 'Enter') this.addTodo(); },
+      addTodo: this.addTodo,
+      todos, toggleTheme: this.toggleTheme,
+      habits, habitPctLabel: habitPct + '%', hasHabits, habitsEmptyLabel,
+      focusItems, hasFocus, streakDots, streakCount,
+      btc, eunl,
+      calendarDays,
+      finSecondary, finBigNum: fmtEur(netWorthTotal), sparklinePoints,
+      finDeltaText,
+      finDeltaChipStyle: { ...styles.finDeltaChip, color: finDeltaPositive ? t.green : t.red, background: finDeltaPositive ? (t.dark ? 'oklch(74% 0.17 150 / 0.15)' : 'oklch(50% 0.16 150 / 0.1)') : (t.dark ? 'oklch(68% 0.19 25 / 0.15)' : 'oklch(55% 0.20 25 / 0.1)') },
+      nutritionModes, macros, meals,
+      verificheRows, compitiRows, hasVerifiche: verificheRows.length > 0, hasCompiti: compitiRows.length > 0,
+      hasSelectedEvent: !!s.selectedEvent,
+      selectedEvent: s.selectedEvent ? { ...s.selectedEvent, dotStyle: { width: 8, height: 8, borderRadius: '50%', background: s.selectedEvent.color } } : { title: '', time: '', dayLabel: '', source: '', location: '', hasLocation: false, dotStyle: {} },
+      closeEvent: this.closeEvent,
+      notifyMinutes: s.notifyMinutes,
+      onNotifyChange: (e) => this.setNotifyMinutes(e.target.value),
+      stopProp: (e) => e.stopPropagation(),
+      chatText: s.chatText, lastReply: s.lastReply,
+      onChatChange: (e) => this.setState({ chatText: e.target.value }),
+      onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
+      onChatSubmit: this.onChatSubmit,
+      jarvisStatusLabel: s.isListening ? 'In ascolto…' : 'Pronto',
+      jarvisMessages, micBtn, jarvisSuggestions,
+      jarvisInput: s.jarvisInput,
+      onJarvisInputChange: (e) => this.setState({ jarvisInput: e.target.value }),
+      onJarvisInputKeyDown: (e) => { if (e.key === 'Enter') this.sendJarvisMessage(); },
+      sendJarvisMessage: () => this.sendJarvisMessage(),
+      addAutomationOpen: s.addAutomationOpen, toggleAddAutomation: this.toggleAddAutomation,
+      newAutomationTime: s.newAutomationTime, onNewAutomationTimeChange: (e) => this.setState({ newAutomationTime: e.target.value }),
+      newAutomationAction: s.newAutomationAction, onNewAutomationActionChange: (e) => this.setState({ newAutomationAction: e.target.value }),
+      addAutomation: this.addAutomation, automations,
+      jarvisWindowOpen: s.jarvisWindowOpen, jarvisWindowTitle: s.jarvisWindowType === 'reply' ? 'Bozza di risposta' : 'Email in arrivo', jarvisEmails, closeJarvisWindow: this.closeJarvisWindow,
+      isEmailWindow: s.jarvisWindowType === 'email', isReplyWindow: s.jarvisWindowType === 'reply',
+      draft: s.draft, onDraftBodyChange: (e) => this.setState(prev => ({ draft: { ...prev.draft, body: e.target.value } })),
+      draftModifyOpen: s.draftModifyOpen, toggleDraftModify: this.toggleDraftModify,
+      draftModifyInstruction: s.draftModifyInstruction, onDraftModifyInstructionChange: (e) => this.setState({ draftModifyInstruction: e.target.value }),
+      applyDraftModify: this.applyDraftModify, saveDraft: this.saveDraft, sendDraft: this.sendDraft,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

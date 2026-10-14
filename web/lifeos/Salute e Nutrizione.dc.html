@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./jarvis-client.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-variant-numeric: tabular-nums; }
+  a { color: inherit; text-decoration: none; }
+  a:hover { opacity: 0.8; }
+  @keyframes blobDrift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,-40px) scale(1.12); } }
+  @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
+  @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideInDrawer { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  input::placeholder { color: inherit; opacity: 0.45; }
+</style>
+</helmet>
+<div style="{{ styles.page }}">
+  <div style="{{ styles.blobA }}"></div>
+  <div style="{{ styles.blobB }}"></div>
+  <div style="{{ styles.blobC }}"></div>
+
+  <div style="{{ styles.navWrap }}">
+    <div style="{{ styles.navbar }}">
+      <div style="{{ styles.navLeft }}">
+        <div style="{{ styles.logo }}">LifeOS</div>
+        <div style="{{ styles.tabRow }}">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
+          <div style="{{ styles.tabActive }}">Salute e Nutrizione</div>
+        </div>
+      </div>
+      <div style="{{ styles.navRight }}">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+          <div style="{{ styles.themeKnob }}"></div>
+        </div>
+        <div style="{{ styles.clockBlock }}">
+          <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
+          <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
+        </div>
+        <a href="Profilo.dc.html" style="{{ styles.navAvatarLink }}"><div style="{{ styles.navAvatar }}">D</div></a>
+      </div>
+    </div>
+  </div>
+
+  <div style="{{ styles.container }}">
+
+    <div style="{{ styles.sectionHeaderRow }}">
+      <div style="{{ styles.sectionTitle }}">NUTRIZIONE</div>
+      <div style="{{ styles.sourceBadgeGroup }}">
+        <sc-if value="{{ fatsecretConnected }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.sourceBadge }}"><div style="{{ styles.refreshIcon }}"></div>FatSecret · sincronizzato {{ fatsecretSyncLabel }}</div>
+          <div style="{{ styles.disconnectLink }}" onClick="{{ disconnectFatsecret }}">Disconnetti</div>
+        </sc-if>
+        <sc-if value="{{ fatsecretNotConnected }}" hint-placeholder-val="{{ true }}">
+          <a href="{{ fatsecretConnectHref }}" style="{{ styles.connectLink }}">Connetti il diario FatSecret →</a>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="{{ styles.rowThird }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">CALORIE DI OGGI</div>
+        <div style="{{ styles.ringWrap }}">
+          <div style="{{ styles.ringOuter }}">
+            <div style="{{ styles.ringInner }}">
+              <div style="{{ styles.ringNum }}">{{ kcal.consumedLabel }}</div>
+              <div style="{{ styles.ringTarget }}">/ {{ kcal.targetLabel }} kcal</div>
+              <div style="{{ styles.ringRemaining }}">{{ kcal.remainingLabel }} rimanenti</div>
+            </div>
+          </div>
+        </div>
+        <div style="{{ styles.macroRowsWrap }}">
+          <sc-for list="{{ macros }}" as="mac" hint-placeholder-count="3">
+            <div style="{{ styles.macroRow }}">
+              <div style="{{ styles.macroHead }}">
+                <div style="{{ styles.macroName }}">{{ mac.name }}</div>
+                <div style="{{ styles.macroVal }}">{{ mac.consumed }} / {{ mac.target }} g · {{ mac.pct }}% · {{ mac.kcalShare }} kcal</div>
+              </div>
+              <div style="{{ styles.macroTrack }}">
+                <div style="{{ mac.fillStyle }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.secondaryLine }}">Fibre {{ kcal.fibre }} g · Zuccheri {{ kcal.sugars }} g</div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">PASTI DI OGGI</div>
+          <div style="{{ styles.mealHeaderBtns }}">
+            <div style="{{ styles.importWrap }}">
+              <div style="{{ styles.secondaryBtn }}" onClick="{{ toggleImport }}">Imposta promemoria</div>
+              <sc-if value="{{ importOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ styles.importPopover }}">
+                  <div style="{{ styles.importPopoverTitle }}">Avviso prima del pasto</div>
+                  <sc-for list="{{ reminderOptions }}" as="rm" hint-placeholder-count="4">
+                    <div style="{{ styles.importRow }}" onClick="{{ rm.select }}">
+                      <div style="{{ rm.checkStyle }}">
+                        <sc-if value="{{ rm.checked }}" hint-placeholder-val="{{ false }}">
+                          <div style="{{ styles.checkMark }}"></div>
+                        </sc-if>
+                      </div>
+                      <div style="{{ styles.importRowLabel }}">{{ rm.label }}</div>
+                    </div>
+                  </sc-for>
+                  <div style="{{ styles.importConfirmBtn }}" onClick="{{ confirmImport }}">Imposta</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="{{ styles.addMealBtn }}" onClick="{{ toggleAddMeal }}">+ Aggiungi pasto</div>
+          </div>
+        </div>
+        <sc-if value="{{ addMealOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.addMealRow }}">
+            <input style="{{ styles.addMealInput }}" placeholder="Cerca un alimento (FatSecret)…" value="{{ newMealName }}" onChange="{{ onNewMealNameChange }}"></input>
+            <input style="{{ styles.addMealInputSmall }}" type="number" placeholder="kcal (manuale)" value="{{ newMealKcal }}" onChange="{{ onNewMealKcalChange }}"></input>
+            <div style="{{ styles.addMealConfirm }}" onClick="{{ addMeal }}">Aggiungi</div>
+          </div>
+          <sc-if value="{{ hasMealSearchResults }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.mealSearchResults }}">
+              <sc-for list="{{ mealSearchResults }}" as="res" hint-placeholder-count="3">
+                <div style="{{ styles.mealSearchRow }}" onClick="{{ res.select }}">
+                  <div style="{{ styles.mealSearchName }}">{{ res.name }}</div>
+                  <div style="{{ styles.mealSearchDesc }}">{{ res.description }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </sc-if>
+        <div style="{{ styles.mealTimeline }}">
+          <sc-for list="{{ meals }}" as="meal" hint-placeholder-count="5">
+            <div>
+              <div style="{{ meal.rowStyle }}" onClick="{{ meal.toggleExpand }}">
+                <div style="{{ styles.mealTime }}">{{ meal.time }}</div>
+                <div style="{{ meal.checkStyle }}" onClick="{{ meal.stopAndToggleDone }}">
+                  <sc-if value="{{ meal.done }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ styles.checkMark }}"></div>
+                  </sc-if>
+                </div>
+                <div style="{{ styles.mealInfo }}">
+                  <div style="{{ styles.mealNameRow }}">
+                    <div style="{{ styles.mealName }}">{{ meal.name }}</div>
+                    <sc-if value="{{ meal.fromReminder }}" hint-placeholder-val="{{ false }}">
+                      <div style="{{ styles.reminderTag }}">Promemoria</div>
+                    </sc-if>
+                  </div>
+                  <div style="{{ styles.macroChipRow }}">
+                    <div style="{{ styles.macroChip }}">P {{ meal.p }}g</div>
+                    <div style="{{ styles.macroChip }}">C {{ meal.c }}g</div>
+                    <div style="{{ styles.macroChip }}">G {{ meal.g }}g</div>
+                  </div>
+                </div>
+                <div style="{{ styles.mealKcal }}">{{ meal.kcal }} kcal</div>
+                <div style="{{ meal.statusStyle }}">{{ meal.statusLabel }}</div>
+              </div>
+              <sc-if value="{{ meal.isExpanded }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ styles.mealDetail }}">{{ meal.ingredients }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.cardHeaderRow }}">
+        <div style="{{ styles.cardTitle }}">OBIETTIVO CALORICO</div>
+        <div style="{{ styles.segmentRow }}">
+          <sc-for list="{{ nutritionModes }}" as="m" hint-placeholder-count="3">
+            <div style="{{ m.style }}" onClick="{{ m.select }}">{{ m.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="{{ styles.goalRow }}">
+        <div style="{{ styles.stepperWrap }}">
+          <div style="{{ styles.stepperBtn }}" onClick="{{ decTarget }}">−</div>
+          <div style="{{ styles.stepperVal }}">{{ calorieTargetLabel }}</div>
+          <div style="{{ styles.stepperBtn }}" onClick="{{ incTarget }}">+</div>
+        </div>
+        <div style="{{ styles.goalMacros }}">
+          <sc-for list="{{ goalMacroItems }}" as="gm" hint-placeholder-count="3">
+            <div style="{{ styles.goalMacroItem }}">
+              <span style="{{ styles.goalMacroLabel }}">{{ gm.label }}</span>
+              <sc-if value="{{ gm.isEditing }}" hint-placeholder-val="{{ false }}">
+                <input type="number" style="{{ styles.goalMacroInput }}" value="{{ gm.inputValue }}" onChange="{{ gm.onChange }}" onBlur="{{ gm.onBlur }}" onKeyDown="{{ gm.onKeyDown }}"></input>
+              </sc-if>
+              <sc-if value="{{ gm.isNotEditing }}" hint-placeholder-val="{{ true }}">
+                <span style="{{ styles.goalMacroValue }}" onClick="{{ gm.onClick }}">{{ gm.displayValue }} g</span>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.goalNote }}">{{ goalNote }}</div>
+      </div>
+    </div>
+
+    <div style="{{ styles.sectionHeaderRow }}">
+      <div style="{{ styles.sectionTitle }}">SALUTE</div>
+      <div style="{{ styles.sourceBadge }}"><div style="{{ styles.refreshIcon }}"></div>Apple Salute · sincronizzato 14:18</div>
+    </div>
+
+    <div style="{{ styles.rowMetrics }}">
+      <sc-for list="{{ healthMetrics }}" as="hm" hint-placeholder-count="5">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">{{ hm.label }}</div>
+          <div style="{{ styles.metricBig }}">{{ hm.value }}</div>
+          <div style="{{ styles.metricAvg }}">media 7g {{ hm.avg }}</div>
+          <div style="{{ styles.metricRow }}">
+            <div style="{{ hm.deltaStyle }}">{{ hm.deltaLabel }}</div>
+            <svg viewBox="0 0 100 28" style="{{ styles.metricSpark }}" preserveAspectRatio="none">
+              <polyline points="{{ hm.sparkPoints }}" fill="none" stroke-width="2" style="{{ hm.sparkStroke }}"></polyline>
+            </svg>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.cardHeaderRow }}">
+        <div style="{{ styles.cardTitle }}">CALENDARIO ALLENAMENTI</div>
+        <div style="{{ styles.headerRightGroup }}">
+          <div style="{{ styles.legendRow }}">
+            <sc-for list="{{ workoutLegend }}" as="wl" hint-placeholder-count="3">
+              <div style="{{ styles.legendItem }}"><div style="{{ wl.dotStyle }}"></div>{{ wl.label }}</div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.segmentRow }}">
+            <div style="{{ calView.weekStyle }}" onClick="{{ calView.selectWeek }}">Settimana</div>
+            <div style="{{ calView.monthStyle }}" onClick="{{ calView.selectMonth }}">Mese</div>
+          </div>
+        </div>
+      </div>
+      <div style="{{ styles.calendarBodyWrap }}">
+      <div style="{{ styles.weekGrid }}">
+        <sc-for list="{{ workoutDays }}" as="day" hint-placeholder-count="7">
+          <div style="{{ styles.dayCol }}">
+            <div style="{{ day.headerStyle }}">
+              <div style="{{ styles.dayName }}">{{ day.name }}</div>
+              <div style="{{ styles.dayNum }}">{{ day.num }}</div>
+            </div>
+            <div style="{{ styles.dayTrack }}">
+              <sc-if value="{{ day.showLine }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ day.lineStyle }}"></div>
+              </sc-if>
+              <sc-for list="{{ day.workouts }}" as="wo" hint-placeholder-count="1">
+                <div style="{{ wo.chipStyle }}" onClick="{{ wo.onClick }}">
+                  <div style="{{ wo.titleStyle }}">{{ wo.title }}</div>
+                  <div style="{{ wo.metaStyle }}">{{ wo.time }} · {{ wo.duration }} min</div>
+                </div>
+              </sc-for>
+              <div style="{{ day.addStyle }}" onClick="{{ day.onAdd }}">+ Allenamento</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.trendHeaderRow }}">
+        <div style="{{ styles.trendIcon }}">✦</div>
+        <div style="{{ styles.cardTitle }}">TREND IA</div>
+        <div style="{{ styles.trendSpacer }}"></div>
+        <div style="{{ styles.trendUpdated }}">{{ trendUpdatedLabel }}</div>
+        <div style="{{ styles.trendRefresh }}" onClick="{{ refreshTrend }}">↻</div>
+      </div>
+      <sc-for list="{{ trendLines }}" as="tl" hint-placeholder-count="2">
+        <div style="{{ styles.trendLine }}">{{ tl }}</div>
+      </sc-for>
+      <sc-if value="{{ hasTrendError }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ styles.trendLine }}">{{ trendError }}</div>
+      </sc-if>
+    </div>
+
+  </div>
+
+  <sc-if value="{{ hasSelectedWorkout }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.drawerOverlay }}" onClick="{{ closeWorkout }}"></div>
+    <div style="{{ styles.drawer }}">
+      <div style="{{ styles.drawerClose }}" onClick="{{ closeWorkout }}">✕</div>
+      <div style="{{ styles.drawerTitle }}">{{ drawerHeading }}</div>
+
+      <div style="{{ styles.formRow }}">
+        <div style="{{ styles.formField }}">
+          <div style="{{ styles.fieldLabel }}">Tipo</div>
+          <select style="{{ styles.fieldInput }}" value="{{ wf.type }}" onChange="{{ wf.onTypeChange }}">
+            <sc-for list="{{ workoutTypeOptions }}" as="to2" hint-placeholder-count="3">
+              <option value="{{ to2 }}">{{ to2 }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <div style="{{ styles.formField }}">
+          <div style="{{ styles.fieldLabel }}">Data</div>
+          <input style="{{ styles.fieldInput }}" type="date" value="{{ wf.date }}" onChange="{{ wf.onDateChange }}"></input>
+        </div>
+      </div>
+      <div style="{{ styles.formField }}">
+        <div style="{{ styles.fieldLabel }}">Titolo</div>
+        <input style="{{ styles.fieldInput }}" placeholder="es. Panca e spinte" value="{{ wf.title }}" onChange="{{ wf.onTitleChange }}"></input>
+      </div>
+      <div style="{{ styles.formRow }}">
+        <div style="{{ styles.formField }}">
+          <div style="{{ styles.fieldLabel }}">Ora</div>
+          <input style="{{ styles.fieldInput }}" type="time" value="{{ wf.time }}" onChange="{{ wf.onTimeChange }}"></input>
+        </div>
+        <div style="{{ styles.formField }}">
+          <div style="{{ styles.fieldLabel }}">Durata (min)</div>
+          <input style="{{ styles.fieldInput }}" type="number" value="{{ wf.durationMinutes }}" onChange="{{ wf.onDurationChange }}"></input>
+        </div>
+      </div>
+
+      <div style="{{ styles.drawerSectionLabel }}">Esercizi</div>
+      <div style="{{ styles.exerciseHeaderRow }}">
+        <div style="{{ styles.exerciseColName }}">Esercizio</div>
+        <div style="{{ styles.exerciseColNum }}">Serie x rip</div>
+        <div style="{{ styles.exerciseColNum }}">Carico</div>
+      </div>
+      <sc-for list="{{ wf.exercises }}" as="ex" hint-placeholder-count="3">
+        <div style="{{ styles.exerciseEditRow }}">
+          <input style="{{ styles.exerciseInputName }}" placeholder="Panca piana" value="{{ ex.name }}" onChange="{{ ex.onNameChange }}"></input>
+          <input style="{{ styles.exerciseInputNum }}" placeholder="4x8" value="{{ ex.sets }}" onChange="{{ ex.onSetsChange }}"></input>
+          <input style="{{ styles.exerciseInputNum }}" placeholder="70 kg" value="{{ ex.load }}" onChange="{{ ex.onLoadChange }}"></input>
+          <div style="{{ styles.rowDeleteBtn }}" onClick="{{ ex.remove }}" title="Rimuovi">×</div>
+        </div>
+      </sc-for>
+      <div style="{{ styles.addExerciseBtn }}" onClick="{{ wf.addExercise }}">+ Esercizio</div>
+
+      <div style="{{ styles.drawerSectionLabel }}">Note personali</div>
+      <textarea style="{{ styles.notesInput }}" placeholder="Come è andata, sensazioni, cosa cambiare la prossima volta…" value="{{ wf.notes }}" onChange="{{ wf.onNotesChange }}"></textarea>
+
+      <div style="{{ styles.drawerActionsRow }}">
+        <sc-if value="{{ wf.canDelete }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.drawerDeleteBtn }}" onClick="{{ wf.remove }}">Elimina</div>
+        </sc-if>
+        <div style="{{ styles.drawerSaveBtn }}" onClick="{{ wf.save }}">Salva</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="{{ styles.chatBarWrap }}">
+    <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
+    </sc-if>
+    <sc-if value="{{ showMealSuggestion }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ styles.suggestionCardCompact }}">
+        <div style="{{ styles.suggestionHeaderRow }}">
+          <div style="{{ styles.suggestionIcon }}">✦</div>
+          <div style="{{ styles.suggestionTitle }}">Proposta: sostituisci il pranzo con pollo, riso e verdure</div>
+          <div style="{{ styles.suggestionExpandBtn }}" onClick="{{ toggleSuggestionExpand }}">{{ suggestionExpandLabel }}</div>
+          <div style="{{ styles.suggestionDismiss }}" onClick="{{ dismissSuggestion }}">✕</div>
+        </div>
+        <sc-if value="{{ suggestionExpanded }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.suggestionCompareRow }}">
+            <div style="{{ styles.suggestionCol }}">
+              <div style="{{ styles.suggestionColLabel }}">Originale</div>
+              <div style="{{ styles.suggestionColName }}">Pasta al pesto</div>
+              <div style="{{ styles.suggestionColMacros }}">720 kcal · P 20g · C 88g · G 26g</div>
+            </div>
+            <div style="{{ styles.suggestionArrow }}">→</div>
+            <div style="{{ styles.suggestionCol }}">
+              <div style="{{ styles.suggestionColLabel }}">Alternativa</div>
+              <div style="{{ styles.suggestionColName }}">Pollo, riso e verdure</div>
+              <div style="{{ styles.suggestionColMacrosAlt }}">640 kcal · P 46g · C 62g · G 16g</div>
+            </div>
+          </div>
+          <div style="{{ styles.suggestionActions }}">
+            <div style="{{ styles.suggestionApply }}" onClick="{{ dismissSuggestion }}">Applica</div>
+            <div style="{{ styles.suggestionOther }}">Altra proposta</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <div style="{{ styles.chatSuggestions }}">
+      <sc-for list="{{ chatSuggestions }}" as="cs" hint-placeholder-count="3">
+        <div style="{{ styles.chatChip }}" onClick="{{ cs.select }}">{{ cs.label }}</div>
+      </sc-for>
+    </div>
+    <div style="{{ styles.chatBar }}">
+      <div style="{{ styles.chatIcon }}">✦</div>
+      <div style="{{ styles.chatLabel }}">AI Nutrizione e Salute</div>
+      <input style="{{ styles.chatInput }}" placeholder="Chiedi una sostituzione, un'idea pasto o un consiglio…" value="{{ chatText }}" onChange="{{ onChatChange }}" onKeyDown="{{ onChatKeyDown }}"></input>
+      <div style="{{ styles.chatMic }}">🎙</div>
+      <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+function tok(theme) {
+  const dark = theme === 'dark';
+  return {
+    dark,
+    bg: dark ? 'oklch(15% 0.03 280)' : 'oklch(97% 0.006 280)',
+    text1: dark ? 'oklch(97% 0.01 280)' : 'oklch(22% 0.02 280)',
+    text2: dark ? 'oklch(75% 0.02 280)' : 'oklch(46% 0.02 280)',
+    text3: dark ? 'oklch(58% 0.02 280)' : 'oklch(58% 0.02 280)',
+    glassBg: dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)',
+    glassBgSoft: dark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.4)',
+    glassBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)',
+    trackBg: dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
+    accent: dark ? 'oklch(68% 0.13 235)' : 'oklch(55% 0.22 235)',
+    accentSoft: dark ? 'oklch(68% 0.13 235 / 0.16)' : 'oklch(55% 0.22 235 / 0.14)',
+    green: dark ? 'oklch(74% 0.11 150)' : 'oklch(50% 0.16 150)',
+    greenSoft: dark ? 'oklch(74% 0.11 150 / 0.13)' : 'oklch(50% 0.16 150 / 0.1)',
+    red: dark ? 'oklch(68% 0.12 25)' : 'oklch(55% 0.20 25)',
+    redSoft: dark ? 'oklch(68% 0.12 25 / 0.13)' : 'oklch(55% 0.20 25 / 0.1)',
+    amber: dark ? 'oklch(74% 0.10 65)' : 'oklch(58% 0.16 60)',
+    amberSoft: dark ? 'oklch(74% 0.10 65 / 0.13)' : 'oklch(58% 0.16 60 / 0.1)',
+    teal: dark ? 'oklch(70% 0.09 190)' : 'oklch(52% 0.12 190)',
+    tealSoft: dark ? 'oklch(70% 0.09 190 / 0.15)' : 'oklch(52% 0.12 190 / 0.1)',
+    shadow: dark ? '0 20px 50px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' : '0 20px 40px -14px rgba(60,50,100,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+  };
+}
+function fmtSpark(vals, w, h, pad) {
+  const max = Math.max(...vals), min = Math.min(...vals);
+  return vals.map((v, i) => `${(i / (vals.length - 1) * w).toFixed(1)},${(h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2)).toFixed(1)}`).join(' ');
+}
+// Local Y-M-D, not toISOString() (UTC) — matches lifeos-store.mjs's own
+// workout dates, so "today"'s column always lines up with what the server
+// considers today regardless of UTC offset.
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+class Component extends DCLogic {
+  state = {
+    theme: (window.LifeOSJarvis && window.LifeOSJarvis.getTheme) ? window.LifeOSJarvis.getTheme() : 'dark',
+    now: new Date(),
+    nutritionMode: 'MANTENIMENTO',
+    calorieTarget: 2400,
+    importOpen: false,
+    reminderMinutes: '30',
+    expandedMealId: null,
+    addMealOpen: false,
+    newMealName: '', newMealKcal: '',
+    mealSearchResults: [], mealSearching: false,
+    realNutritionToday: null, realNutritionTargets: null,
+    weekAvgKcal: null, weekAvgDays: 0,
+    fatsecretSyncLabel: '—',
+    fatsecretConnected: false,
+    editingMacro: null, macroEditValue: '',
+    meals: [
+      { id: 1, time: '07:30', name: 'Colazione', kcal: 480, p: 22, c: 58, g: 16, done: true, fromReminder: false, ingredients: '60g fiocchi d\'avena, 200ml latte parzialmente scremato, 1 banana, 15g miele' },
+      { id: 2, time: '10:30', name: 'Spuntino', kcal: 170, p: 8, c: 20, g: 6, done: true, fromReminder: true, ingredients: '1 yogurt greco 150g, 20g mandorle' },
+      { id: 3, time: '13:15', name: 'Pranzo', kcal: 720, p: 46, c: 74, g: 20, done: true, fromReminder: false, ingredients: '150g petto di pollo, 90g riso basmati, verdure grigliate, 10g olio d\'oliva' },
+      { id: 4, time: '16:45', name: 'Spuntino pomeridiano', kcal: 480, p: 16, c: 60, g: 18, done: true, fromReminder: true, ingredients: '80g pane integrale, 30g prosciutto crudo, 1 frutto' },
+      { id: 5, time: '20:00', name: 'Cena', kcal: 550, p: 20, c: 28, g: 22, done: false, fromReminder: false, upcoming: true, ingredients: '180g salmone al forno, 200g patate, insalata mista, 10g olio d\'oliva' },
+    ],
+    calView: 'settimana',
+    workouts: [], // real — see refreshWorkouts/componentDidMount
+    selectedWorkout: null, // the draft being viewed/edited in the drawer, or null when closed — see openWorkout/openNewWorkout
+    fitnessTrend: null, // { lines: [...], generatedAtIso } from /api/lifeos-fitness-trend, cached server-side once a day
+    trendLoading: false,
+    trendError: null,
+    realHealth: null,
+    showMealSuggestion: true,
+    suggestionExpanded: false,
+    chatText: '',
+    lastReply: null,
+  };
+
+  componentDidMount() {
+    this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    window.LifeOSJarvis.fetchData().then(data => {
+      const patch = {};
+      const localDay = (iso) => new Date(iso).toLocaleDateString('en-CA');
+      const todayKey = localDay(new Date());
+      const allMeals = data.meals || [];
+
+      // "PASTI DI OGGI" now shows the real log for today, replacing the
+      // illustrative 5-meal mock entirely — including showing nothing yet
+      // logged, which is the honest state on a fresh day.
+      patch.meals = allMeals
+        .filter((r) => localDay(r.time) === todayKey)
+        .map((r) => ({
+          id: r.id, time: new Date(r.time).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+          name: r.name, kcal: r.kcal, p: r.protein || 0, c: r.carbs || 0, g: r.fat || 0,
+          done: true, fromReminder: false, ingredients: r.servingDescription || '',
+        }));
+
+      // Always present (server default even with zero meals logged) — see
+      // summarizeMealsForToday in lifeos-store.mjs.
+      if (data.nutritionToday) patch.realNutritionToday = data.nutritionToday;
+      if (data.settings?.nutritionTargets) {
+        patch.realNutritionTargets = data.settings.nutritionTargets;
+        patch.calorieTarget = data.settings.nutritionTargets.kcal;
+      }
+
+      // Real 7-day kcal average for the goal card's note, grouping every
+      // logged meal (not just today's) by local calendar day.
+      const byDay = {};
+      for (const r of allMeals) {
+        const day = localDay(r.time);
+        byDay[day] = (byDay[day] || 0) + (Number(r.kcal) || 0);
+      }
+      const recentDays = Object.keys(byDay).sort().slice(-7);
+      if (recentDays.length) {
+        patch.weekAvgKcal = Math.round(recentDays.reduce((sum, d) => sum + byDay[d], 0) / recentDays.length);
+        patch.weekAvgDays = recentDays.length;
+      }
+
+      patch.fatsecretSyncLabel = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      patch.fatsecretConnected = !!data.fatsecretConnected;
+      if (data.health && Object.keys(data.health).length) patch.realHealth = data.health;
+      patch.workouts = data.workouts || [];
+      this.setState(patch);
+    }).catch(() => {});
+    this.loadTrend(false);
+  }
+
+  refreshWorkouts = () => window.LifeOSJarvis.fetchData().then(data => this.setState({ workouts: data.workouts || [] })).catch(() => {});
+
+  // force=false on mount and page reloads: the server itself only actually
+  // calls Gemini once per calendar day (see /api/lifeos-fitness-trend in
+  // server.mjs) and just returns the cached lines otherwise, so this is
+  // cheap to call every time. force=true is only the ↻ button.
+  loadTrend = (force) => {
+    this.setState({ trendLoading: true, trendError: null });
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    fetch(dir + '/api/lifeos-fitness-trend' + (force ? '?force=1' : ''), { credentials: 'same-origin' })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => this.setState(ok
+        ? { fitnessTrend: data, trendError: null, trendLoading: false }
+        : { trendError: data.error || 'Trend non disponibile.', trendLoading: false }))
+      .catch(() => this.setState({ trendError: 'Trend non raggiungibile.', trendLoading: false }));
+  };
+  refreshTrend = () => this.loadTrend(true);
+
+  searchMealFood = (value) => {
+    clearTimeout(this._mealSearchTimer);
+    if (!value.trim()) { this.setState({ mealSearchResults: [] }); return; }
+    this._mealSearchTimer = setTimeout(() => {
+      const dir = location.pathname.replace(/\/[^/]*$/, '');
+      this.setState({ mealSearching: true });
+      fetch(dir + '/api/lifeos-food-search?q=' + encodeURIComponent(value), { credentials: 'same-origin' })
+        .then((res) => (res.ok ? res.json() : { results: [] }))
+        .then((data) => this.setState({ mealSearchResults: data.results || [], mealSearching: false }))
+        .catch(() => this.setState({ mealSearching: false }));
+    }, 400);
+  };
+
+  /** Appends a just-added meal record (from either search pick or manual entry) to today's timeline. */
+  pushMealRecord = (record) => {
+    this.setState((s) => ({
+      meals: [...s.meals, {
+        id: record.id, time: new Date(record.time).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+        name: record.name, kcal: record.kcal, p: record.protein || 0, c: record.carbs || 0, g: record.fat || 0,
+        done: true, fromReminder: false, ingredients: record.servingDescription || '',
+      }],
+      newMealName: '', newMealKcal: '', mealSearchResults: [], addMealOpen: false,
+    }));
+  };
+
+  pickMealSearchResult = (food) => {
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    fetch(dir + '/api/lifeos-meal-add', {
+      method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ foodId: food.id }),
+    }).then((res) => res.json()).then((record) => this.pushMealRecord(record)).catch(() => {});
+  };
+
+  disconnectFatsecret = () => {
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    fetch(dir + '/api/lifeos-fatsecret-disconnect', { method: 'POST', credentials: 'same-origin' })
+      .then(() => this.setState({ fatsecretConnected: false }))
+      .catch(() => {});
+  };
+
+  componentWillUnmount() { clearInterval(this._timer); }
+
+  toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
+  setNutritionMode = (mode) => this.setState({ nutritionMode: mode });
+  // Persisted, not just local state — Profilo's settings store (see
+  // lifeos-store.mjs) is the single source of truth the ring/macro card
+  // read back on every load, so a target set here survives a refresh.
+  // Takes a partial object ({kcal} or {protein}/{carbs}/{fat}) — the server
+  // merges it into the existing targets field-by-field, see the
+  // /api/lifeos-settings handler in server.mjs.
+  persistNutritionTarget = (fields) => {
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    fetch(dir + '/api/lifeos-settings', {
+      method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ nutritionTargets: fields }),
+    }).catch(() => {});
+  };
+  incTarget = () => { const kcal = this.state.calorieTarget + 50; this.setState({ calorieTarget: kcal }); this.persistNutritionTarget({ kcal }); };
+  decTarget = () => { const kcal = Math.max(1200, this.state.calorieTarget - 50); this.setState({ calorieTarget: kcal }); this.persistNutritionTarget({ kcal }); };
+
+  // Protein/carbs/fat targets — click the number to edit it in place, Enter
+  // or blur to save. Reflected into realNutritionTargets immediately rather
+  // than waiting for the next page load's fetch.
+  startEditMacro = (key, currentValue) => this.setState({ editingMacro: key, macroEditValue: String(currentValue) });
+  saveMacroEdit = (key) => {
+    const value = Math.max(0, parseInt(this.state.macroEditValue, 10) || 0);
+    this.setState(s => ({
+      editingMacro: null,
+      realNutritionTargets: { ...(s.realNutritionTargets || { protein: 160, carbs: 280, fat: 80 }), [key]: value },
+    }));
+    this.persistNutritionTarget({ [key]: value });
+  };
+  toggleImport = () => this.setState(s => ({ importOpen: !s.importOpen }));
+  setReminderMinutes = (v) => this.setState({ reminderMinutes: v });
+  confirmImport = () => this.setState({ importOpen: false });
+  toggleMealExpand = (id) => this.setState(s => ({ expandedMealId: s.expandedMealId === id ? null : id }));
+  toggleMealDone = (id) => this.setState(s => ({ meals: s.meals.map(m => m.id === id ? { ...m, done: !m.done } : m) }));
+  toggleAddMeal = () => this.setState(s => ({ addMealOpen: !s.addMealOpen }));
+  // Manual fallback for when the FatSecret search below doesn't have what
+  // you ate — same /api/lifeos-meal-add endpoint as a search pick, just
+  // without a foodId, so it lands in the real log with kcal but no macros
+  // (see the addMeal branch in server.mjs) instead of only living in this
+  // tab's memory until the next refresh.
+  addMeal = () => {
+    const name = this.state.newMealName.trim();
+    const kcal = parseInt(this.state.newMealKcal) || 0;
+    if (!name || !kcal) return;
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    fetch(dir + '/api/lifeos-meal-add', {
+      method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, kcal }),
+    }).then((res) => res.json()).then((record) => this.pushMealRecord(record)).catch(() => {});
+  };
+  setCalView = (v) => this.setState({ calView: v });
+
+  // The drawer always edits a plain draft object — opening an existing
+  // workout copies its fields in, opening a new one starts from blank
+  // defaults for that day. Either way saveWorkout below is the only thing
+  // that decides add vs update, by whether the draft has a real id.
+  openWorkout = (w) => this.setState({ selectedWorkout: { ...w, exercises: w.exercises.map(e => ({ ...e })) } });
+  openNewWorkout = (dateIso) => this.setState({
+    selectedWorkout: { id: null, date: dateIso, type: 'Forza', title: '', time: '18:00', durationMinutes: 60, exercises: [], notes: '' },
+  });
+  closeWorkout = () => this.setState({ selectedWorkout: null });
+  setWorkoutField = (field, value) => this.setState(s => ({ selectedWorkout: { ...s.selectedWorkout, [field]: value } }));
+  addExerciseRow = () => this.setState(s => ({
+    selectedWorkout: { ...s.selectedWorkout, exercises: [...s.selectedWorkout.exercises, { name: '', sets: '', load: '' }] },
+  }));
+  setExerciseField = (i, field, value) => this.setState(s => {
+    const exercises = s.selectedWorkout.exercises.map((e, idx) => idx === i ? { ...e, [field]: value } : e);
+    return { selectedWorkout: { ...s.selectedWorkout, exercises } };
+  });
+  removeExerciseRow = (i) => this.setState(s => ({
+    selectedWorkout: { ...s.selectedWorkout, exercises: s.selectedWorkout.exercises.filter((_, idx) => idx !== i) },
+  }));
+  saveWorkout = () => {
+    const w = this.state.selectedWorkout;
+    const data = {
+      date: w.date, type: w.type, title: w.title.trim() || 'Allenamento', time: w.time,
+      durationMinutes: Number(w.durationMinutes) || 60,
+      exercises: w.exercises.filter(e => e.name.trim()),
+      notes: w.notes,
+    };
+    const call = w.id
+      ? window.LifeOSJarvis.financeOp('workouts', 'update', { id: w.id, data })
+      : window.LifeOSJarvis.financeOp('workouts', 'add', { data });
+    call.then(() => { this.setState({ selectedWorkout: null }); this.refreshWorkouts(); }).catch(() => {});
+  };
+  deleteWorkout = () => {
+    const id = this.state.selectedWorkout.id;
+    window.LifeOSJarvis.financeOp('workouts', 'remove', { id })
+      .then(() => { this.setState({ selectedWorkout: null }); this.refreshWorkouts(); })
+      .catch(() => {});
+  };
+  dismissSuggestion = () => this.setState({ showMealSuggestion: false });
+  toggleSuggestionExpand = () => this.setState(s => ({ suggestionExpanded: !s.suggestionExpanded }));
+  onChatSubmit = () => {
+    const text = this.state.chatText.trim();
+    if (!text) return;
+    this.setState({ chatText: '', lastReply: null });
+    window.LifeOSJarvis.ask(text, null, 'salute').then(reply => {
+      this.setState(s => ({
+        lastReply: reply.text || '...',
+        meals: reply.action === 'add_meal' && reply.data
+          ? [...s.meals, {
+              id: reply.data.id, time: new Date(reply.data.time).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+              name: reply.data.name, kcal: reply.data.kcal, p: 0, c: 0, g: 0, done: false, fromReminder: false, ingredients: '',
+            }]
+          : s.meals,
+      }));
+    }).catch(err => {
+      this.setState({ lastReply: 'Non riesco a rispondere: ' + err.message });
+    });
+  };
+
+  renderVals() {
+    const s = this.state;
+    const t = tok(s.theme);
+    const dark = t.dark;
+    const glass = {
+      background: t.glassBg, backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+      border: `1px solid ${t.glassBorder}`, boxShadow: t.shadow,
+    };
+    const card = { ...glass, borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, color: t.text1, boxSizing: 'border-box' };
+
+    const timeStr = s.now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = s.now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, c => c.toUpperCase());
+
+    const styles = {
+      page: { position: 'relative', minHeight: '100vh', width: '100%', overflowX: 'hidden', background: t.bg, transition: 'background 0.4s ease' },
+      blobA: { position: 'fixed', top: '-10%', left: '5%', width: 640, height: 640, borderRadius: '50%', background: dark ? 'oklch(55% 0.20 300)' : 'oklch(88% 0.07 300)', filter: 'blur(120px)', opacity: 0.55, animation: 'blobDrift1 26s ease-in-out infinite' },
+      blobB: { position: 'fixed', top: '20%', right: '0%', width: 560, height: 560, borderRadius: '50%', background: dark ? 'oklch(55% 0.15 200)' : 'oklch(90% 0.06 195)', filter: 'blur(120px)', opacity: 0.5, animation: 'blobDrift2 30s ease-in-out infinite' },
+      blobC: { position: 'fixed', bottom: '-15%', left: '30%', width: 620, height: 620, borderRadius: '50%', background: dark ? 'oklch(48% 0.18 265)' : 'oklch(90% 0.05 340)', filter: 'blur(130px)', opacity: 0.45, animation: 'blobDrift3 34s ease-in-out infinite' },
+      container: { position: 'relative', zIndex: 1, maxWidth: 1440, margin: '0 auto', padding: '0 32px 260px', display: 'flex', flexDirection: 'column', gap: 24 },
+      navWrap: { position: 'relative', zIndex: 1, width: '100%', marginBottom: 24 },
+      navbar: { ...glass, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', width: '100%', boxSizing: 'border-box', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: t.text1 },
+      navLeft: { display: 'flex', alignItems: 'center', gap: 32 },
+      logo: { fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em', color: t.text1 },
+      tabRow: { display: 'flex', alignItems: 'center', gap: 6 },
+      tabLink: { display: 'flex' },
+      tab: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 500, color: t.text2, cursor: 'pointer' },
+      tabActive: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600, color: t.text1, background: t.accentSoft, cursor: 'pointer' },
+      navRight: { display: 'flex', alignItems: 'center', gap: 12 },
+      themeSwitch: { width: 42, height: 24, borderRadius: 8, background: t.trackBg, border: `1px solid ${t.glassBorder}`, position: 'relative', cursor: 'pointer', flexShrink: 0 },
+      themeKnob: { position: 'absolute', top: 2, left: dark ? 2 : 20, width: 18, height: 18, borderRadius: 5, background: t.accent, transition: 'left 0.25s ease' },
+      clockBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 6 },
+      clockTime: { fontSize: 14, fontWeight: 700, color: t.text1 },
+      clockDate: { fontSize: 12, color: t.text2, marginTop: 2 },
+      navAvatarLink: { display: 'flex' },
+      navAvatar: { width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, cursor: 'pointer' },
+
+      sectionHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+      sectionTitle: { fontSize: 20, fontWeight: 800, color: t.text1, letterSpacing: '-0.01em' },
+      sourceBadge: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: t.text3, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, padding: '6px 12px' },
+      refreshIcon: { width: 10, height: 10, borderRadius: '50%', border: `1.5px solid ${t.text3}`, borderTopColor: 'transparent' },
+      sourceBadgeGroup: { display: 'flex', alignItems: 'center', gap: 10 },
+      connectLink: { fontSize: 12.5, fontWeight: 700, color: t.accent, cursor: 'pointer' },
+      disconnectLink: { fontSize: 11.5, color: t.text3, cursor: 'pointer', textDecoration: 'underline' },
+
+      card,
+      cardTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+      cardHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
+
+      rowThird: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 },
+      ringWrap: { display: 'flex', justifyContent: 'center', padding: '4px 0' },
+      ringOuter: { width: 168, height: 168, borderRadius: '50%', background: `conic-gradient(${t.accent} ${(1850 / 2400 * 100).toFixed(1)}%, ${t.trackBg} 0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, boxSizing: 'border-box' },
+      ringInner: { width: '100%', height: '100%', borderRadius: '50%', background: t.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 },
+      ringNum: { fontSize: 26, fontWeight: 800, color: t.text1 },
+      ringTarget: { fontSize: 12, color: t.text2 },
+      ringRemaining: { fontSize: 11.5, color: t.accent, fontWeight: 600, marginTop: 4 },
+      macroRowsWrap: { display: 'flex', flexDirection: 'column', gap: 12 },
+      macroRow: { display: 'flex', flexDirection: 'column', gap: 5 },
+      macroHead: { display: 'flex', justifyContent: 'space-between' },
+      macroName: { fontSize: 12.5, fontWeight: 600, color: t.text2 },
+      macroVal: { fontSize: 12, color: t.text2 },
+      macroTrack: { height: 7, borderRadius: 999, background: t.trackBg, overflow: 'hidden' },
+      secondaryLine: { fontSize: 12, color: t.text3, marginTop: -4 },
+
+      mealHeaderBtns: { display: 'flex', alignItems: 'center', gap: 10, position: 'relative' },
+      importWrap: { position: 'relative' },
+      secondaryBtn: { fontSize: 12.5, fontWeight: 600, color: t.text1, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 10, padding: '9px 14px', cursor: 'pointer', whiteSpace: 'nowrap' },
+      importPopover: { position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 260, ...glass, borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 30, animation: 'fadeUp 0.2s ease' },
+      importPopoverTitle: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 },
+      importRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '6px 4px', cursor: 'pointer' },
+      importRowLabel: { fontSize: 13, color: t.text1 },
+      importConfirmBtn: { marginTop: 4, textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '9px 0', cursor: 'pointer' },
+      addMealBtn: { fontSize: 12.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '9px 14px', cursor: 'pointer', whiteSpace: 'nowrap' },
+      addMealRow: { display: 'flex', gap: 10 },
+      addMealInput: { flex: 1, padding: '10px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter' },
+      addMealInputSmall: { width: 90, padding: '10px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter' },
+      addMealConfirm: { fontSize: 12.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' },
+      mealSearchResults: { display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, maxHeight: 220, overflowY: 'auto' },
+      mealSearchRow: { display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 12px', borderRadius: 8, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, cursor: 'pointer' },
+      mealSearchName: { fontSize: 13, fontWeight: 600, color: t.text1 },
+      mealSearchDesc: { fontSize: 11.5, color: t.text3 },
+
+      mealTimeline: { display: 'flex', flexDirection: 'column', gap: 2 },
+      mealTime: { fontSize: 12.5, fontWeight: 600, color: t.text3, width: 46, flexShrink: 0 },
+      checkMark: { width: 10, height: 6, borderLeft: '2px solid white', borderBottom: '2px solid white', transform: 'rotate(-45deg) translate(1px,-1px)' },
+      mealInfo: { flex: 1 },
+      mealNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
+      mealName: { fontSize: 14, fontWeight: 600, color: t.text1 },
+      reminderTag: { fontSize: 10, fontWeight: 700, color: t.amber, background: t.amberSoft, borderRadius: 6, padding: '2px 7px' },
+      macroChipRow: { display: 'flex', gap: 6, marginTop: 4 },
+      macroChip: { fontSize: 11, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 6, padding: '2px 8px' },
+      mealKcal: { fontSize: 13.5, fontWeight: 700, color: t.text1, width: 70, textAlign: 'right', flexShrink: 0 },
+      mealDetail: { fontSize: 12.5, color: t.text2, padding: '0 8px 12px 82px', lineHeight: 1.5, animation: 'fadeUp 0.2s ease' },
+
+      segmentRow: { display: 'flex', gap: 4, background: t.trackBg, borderRadius: 8, padding: 3 },
+      goalRow: { display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' },
+      stepperWrap: { display: 'flex', alignItems: 'center', gap: 14 },
+      stepperBtn: { width: 34, height: 34, borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: t.text1, cursor: 'pointer', flexShrink: 0 },
+      stepperVal: { fontSize: 20, fontWeight: 800, color: t.text1, minWidth: 90, textAlign: 'center' },
+      goalMacros: { display: 'flex', gap: 20 },
+      goalMacroItem: { fontSize: 13.5, fontWeight: 600, color: t.text1, display: 'flex', alignItems: 'center' },
+      goalMacroLabel: { fontSize: 11, color: t.text3, fontWeight: 700, marginRight: 6 },
+      goalMacroValue: { cursor: 'pointer', borderBottom: `1px dashed ${t.text3}` },
+      goalMacroInput: { width: 48, fontSize: 13.5, fontWeight: 600, color: t.text1, background: t.glassBgSoft, border: `1px solid ${t.accent}`, borderRadius: 6, padding: '2px 6px', outline: 'none', fontFamily: 'Inter' },
+      goalNote: { fontSize: 12.5, color: t.text3, marginLeft: 'auto' },
+
+      rowMetrics: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 24 },
+      metricBig: { fontSize: 28, fontWeight: 800, color: t.text1, letterSpacing: '-0.01em' },
+      metricAvg: { fontSize: 12, color: t.text3 },
+      metricRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 4 },
+      metricSpark: { width: 60, height: 28, flexShrink: 0 },
+
+      headerRightGroup: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
+      legendRow: { display: 'flex', gap: 14 },
+      legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: t.text2 },
+      calendarBodyWrap: { position: 'relative' },
+      weekGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0, border: `1px solid ${t.glassBorder}`, borderRadius: 8, overflow: 'hidden' },
+      dayCol: { display: 'flex', flexDirection: 'column', borderRight: `1px solid ${t.glassBorder}` },
+      dayName: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase' },
+      dayNum: { fontSize: 15, fontWeight: 700, color: t.text1, marginTop: 2 },
+      dayTrack: { position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 6px', flex: 1, minHeight: 140 },
+      addWorkoutBtn: { fontSize: 10.5, color: t.text3, cursor: 'pointer', padding: '6px 4px', borderRadius: 8, border: `1px dashed ${t.glassBorder}`, textAlign: 'center', marginTop: 2 },
+
+      trendHeaderRow: { display: 'flex', alignItems: 'center', gap: 10 },
+      trendIcon: { fontSize: 14, color: t.teal },
+      trendSpacer: { flex: 1 },
+      trendUpdated: { fontSize: 11.5, color: t.text3 },
+      trendRefresh: { fontSize: 13, color: t.text3, cursor: 'pointer', padding: '2px 4px' },
+      trendLine: { fontSize: 14, color: t.text1, lineHeight: 1.5 },
+
+      drawerOverlay: { position: 'fixed', inset: 0, background: dark ? 'rgba(0,0,0,0.45)' : 'rgba(20,20,30,0.25)', zIndex: 45, animation: 'fadeUp 0.25s ease' },
+      drawer: { position: 'fixed', top: 0, right: 0, height: '100vh', width: 420, ...glass, borderRadius: 0, borderRight: 'none', borderTop: 'none', borderBottom: 'none', zIndex: 46, padding: 28, boxSizing: 'border-box', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, color: t.text1, animation: 'slideInDrawer 0.32s cubic-bezier(0.2,0.8,0.2,1)' },
+      drawerClose: { alignSelf: 'flex-end', fontSize: 14, color: t.text2, cursor: 'pointer', padding: 6 },
+      drawerTitle: { fontSize: 20, fontWeight: 800, color: t.text1 },
+      drawerSectionLabel: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 6 },
+      formRow: { display: 'flex', gap: 10 },
+      formField: { flex: 1, display: 'flex', flexDirection: 'column', gap: 5 },
+      fieldLabel: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.03em' },
+      fieldInput: { padding: '9px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter', boxSizing: 'border-box', width: '100%' },
+      exerciseHeaderRow: { display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr', gap: 8, fontSize: 10.5, fontWeight: 700, color: t.text3, textTransform: 'uppercase' },
+      exerciseColName: { fontSize: 13, color: t.text1 },
+      exerciseColNum: { fontSize: 13, color: t.text2, textAlign: 'right' },
+      exerciseEditRow: { display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr auto', gap: 8, alignItems: 'center' },
+      exerciseInputName: { padding: '8px 10px', borderRadius: 8, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13, outline: 'none', fontFamily: 'Inter', boxSizing: 'border-box', width: '100%' },
+      exerciseInputNum: { padding: '8px 10px', borderRadius: 8, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13, outline: 'none', fontFamily: 'Inter', boxSizing: 'border-box', width: '100%', textAlign: 'right' },
+      rowDeleteBtn: { width: 24, height: 24, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1, color: t.text3, cursor: 'pointer', flexShrink: 0 },
+      addExerciseBtn: { fontSize: 12.5, fontWeight: 700, color: t.accent, cursor: 'pointer', padding: '4px 2px' },
+      notesInput: { padding: '10px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter', boxSizing: 'border-box', width: '100%', minHeight: 70, resize: 'vertical' },
+      drawerActionsRow: { display: 'flex', gap: 10, marginTop: 8 },
+      drawerSaveBtn: { flex: 1, textAlign: 'center', fontSize: 13.5, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '11px 0', cursor: 'pointer' },
+      drawerDeleteBtn: { textAlign: 'center', fontSize: 13.5, fontWeight: 700, color: t.red, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 10, padding: '11px 16px', cursor: 'pointer' },
+
+      suggestionCardCompact: { ...glass, borderRadius: 14, padding: '9px 14px', display: 'flex', flexDirection: 'column', gap: 10, color: t.text1, width: '100%', boxSizing: 'border-box' },
+      suggestionHeaderRow: { display: 'flex', alignItems: 'center', gap: 10 },
+      suggestionIcon: { fontSize: 13, color: t.teal, flexShrink: 0 },
+      suggestionTitle: { flex: 1, fontSize: 12.5, fontWeight: 600, color: t.text1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      suggestionExpandBtn: { fontSize: 12, fontWeight: 700, color: t.teal, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 },
+      suggestionDismiss: { fontSize: 12, color: t.text3, cursor: 'pointer', padding: 4, flexShrink: 0 },
+      suggestionCompareRow: { display: 'flex', alignItems: 'center', gap: 14 },
+      suggestionCol: { flex: 1, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 12, padding: 12 },
+      suggestionColLabel: { fontSize: 10.5, fontWeight: 700, color: t.text3, textTransform: 'uppercase' },
+      suggestionColName: { fontSize: 14, fontWeight: 600, color: t.text1, marginTop: 4 },
+      suggestionColMacros: { fontSize: 12, color: t.text2, marginTop: 4 },
+      suggestionColMacrosAlt: { fontSize: 12, color: t.green, marginTop: 4, fontWeight: 600 },
+      suggestionArrow: { fontSize: 16, color: t.text3, flexShrink: 0 },
+      suggestionActions: { display: 'flex', gap: 10 },
+      suggestionApply: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'white', background: t.accent, borderRadius: 10, padding: '10px 0', cursor: 'pointer' },
+      suggestionOther: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 10, padding: '10px 0', cursor: 'pointer' },
+
+      chatBarWrap: { position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', width: 'min(700px, 92vw)', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' },
+      replyBubble: { ...glass, borderRadius: 14, padding: '12px 16px', fontSize: 13.5, lineHeight: 1.5, color: t.text1, width: '100%', boxSizing: 'border-box' },
+      chatSuggestions: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+      chatChip: { ...glass, borderRadius: 999, padding: '7px 14px', fontSize: 12.5, color: t.text2, cursor: 'pointer' },
+      chatBar: { ...glass, borderRadius: 14, padding: '8px 8px 8px 14px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' },
+      chatIcon: { fontSize: 15, color: t.teal, flexShrink: 0 },
+      chatLabel: { fontSize: 13, fontWeight: 700, color: t.text1, flexShrink: 0, whiteSpace: 'nowrap' },
+      chatInput: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: t.text1, fontSize: 14, fontFamily: 'Inter' },
+      chatMic: { width: 34, height: 34, borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 14 },
+      chatSend: { width: 38, height: 38, borderRadius: 10, background: t.teal, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16 },
+    };
+
+    const periodPillBase = { padding: '7px 13px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease' };
+
+    // kcal ring + macros — real from the day's FatSecret-backed meal log
+    // (s.realNutritionToday, always set once componentDidMount's fetch
+    // resolves, even at zero) once loaded; illustrative mock only in the
+    // brief window before that first load, same pattern healthMetrics below
+    // uses for s.realHealth.
+    const nutritionTargets = s.realNutritionTargets || { kcal: s.calorieTarget, protein: 160, carbs: 280, fat: 80 };
+    const kcalConsumed = s.realNutritionToday ? s.realNutritionToday.kcal : 1850;
+    const kcalTarget = s.calorieTarget;
+    const kcal = { consumedLabel: kcalConsumed.toLocaleString('it-IT'), targetLabel: kcalTarget.toLocaleString('it-IT'), remainingLabel: (kcalTarget - kcalConsumed).toLocaleString('it-IT'), fibre: 18, sugars: 46 };
+    const macroData = s.realNutritionToday ? [
+      { name: 'PROTEINE', consumed: s.realNutritionToday.protein, target: nutritionTargets.protein, kcalPerG: 4 },
+      { name: 'CARBOIDRATI', consumed: s.realNutritionToday.carbs, target: nutritionTargets.carbs, kcalPerG: 4 },
+      { name: 'GRASSI', consumed: s.realNutritionToday.fat, target: nutritionTargets.fat, kcalPerG: 9 },
+    ] : [
+      { name: 'PROTEINE', consumed: 112, target: 160, kcalPerG: 4 },
+      { name: 'CARBOIDRATI', consumed: 190, target: 280, kcalPerG: 4 },
+      { name: 'GRASSI', consumed: 58, target: 80, kcalPerG: 9 },
+    ];
+    const macros = macroData.map(m => ({
+      name: m.name, consumed: m.consumed, target: m.target,
+      pct: Math.round((m.consumed / m.target) * 100), kcalShare: m.consumed * m.kcalPerG,
+      fillStyle: { height: '100%', width: Math.min(100, (m.consumed / m.target) * 100) + '%', borderRadius: 999, background: t.accent },
+    }));
+
+    // meals
+    const now = s.now;
+    const upcoming = s.meals.find(m => m.upcoming && !m.done);
+    const meals = s.meals.map(meal => {
+      const isNext = upcoming && meal.id === upcoming.id;
+      return {
+        time: meal.time, name: meal.name, kcal: meal.kcal, p: meal.p, c: meal.c, g: meal.g, done: meal.done, fromReminder: meal.fromReminder,
+        ingredients: meal.ingredients, isExpanded: s.expandedMealId === meal.id,
+        rowStyle: { display: 'flex', alignItems: 'center', gap: 14, padding: '12px 8px', borderRadius: 12, borderTop: `1px solid ${t.glassBorder}`, background: isNext ? t.accentSoft : 'transparent', cursor: 'pointer' },
+        checkStyle: { width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${meal.done ? t.accent : t.glassBorder}`, background: meal.done ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' },
+        statusStyle: { fontSize: 12, fontWeight: 700, color: meal.done ? t.green : t.text3, width: 90, textAlign: 'right', flexShrink: 0 },
+        statusLabel: meal.done ? 'Fatto' : (isNext ? 'tra 1h 20m' : 'Da fare'),
+        toggleExpand: () => this.toggleMealExpand(meal.id),
+        stopAndToggleDone: (e) => { e.stopPropagation(); this.toggleMealDone(meal.id); },
+      };
+    });
+
+    const nutritionModes = ['CUT', 'BULK', 'MANTENIMENTO'].map(k => ({
+      label: k,
+      style: { padding: '7px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', background: s.nutritionMode === k ? t.accent : 'transparent', color: s.nutritionMode === k ? 'white' : t.text2 },
+      select: () => this.setNutritionMode(k),
+    }));
+    // Real persisted targets (see nutritionTargets above) once loaded, same
+    // 27/47/30 split as the old placeholder only as a pre-load fallback.
+    // Each is click-to-edit — see startEditMacro/saveMacroEdit.
+    const goalMacroValues = s.realNutritionTargets
+      ? { protein: nutritionTargets.protein, carbs: nutritionTargets.carbs, fat: nutritionTargets.fat }
+      : { protein: Math.round(s.calorieTarget * 0.27 / 4), carbs: Math.round(s.calorieTarget * 0.47 / 4), fat: Math.round(s.calorieTarget * 0.3 / 9) };
+    const goalMacroItems = [
+      { key: 'protein', label: 'PROT' },
+      { key: 'carbs', label: 'CARBO' },
+      { key: 'fat', label: 'GRASSI' },
+    ].map(({ key, label }) => {
+      const isEditing = s.editingMacro === key;
+      return {
+        label, isEditing, isNotEditing: !isEditing,
+        displayValue: goalMacroValues[key], inputValue: s.macroEditValue,
+        onClick: () => this.startEditMacro(key, goalMacroValues[key]),
+        onChange: (e) => this.setState({ macroEditValue: e.target.value }),
+        onBlur: () => this.saveMacroEdit(key),
+        onKeyDown: (e) => { if (e.key === 'Enter') this.saveMacroEdit(key); },
+      };
+    });
+    const goalNote = s.weekAvgKcal != null
+      ? 'Media ultimi ' + s.weekAvgDays + ' giorni: ' + s.weekAvgKcal.toLocaleString('it-IT') + ' kcal (' +
+        (s.calorieTarget - s.weekAvgKcal > 0 ? '-' + (s.calorieTarget - s.weekAvgKcal) : '+' + (s.weekAvgKcal - s.calorieTarget)) + ' vs obiettivo)'
+      : 'Registra qualche pasto per vedere la media.';
+
+    const reminderOptions = [
+      { v: '15', label: '15 minuti prima' }, { v: '30', label: '30 minuti prima' },
+      { v: '60', label: '1 ora prima' }, { v: '1440', label: '1 giorno prima' },
+    ].map(r => ({
+      label: r.label, checked: s.reminderMinutes === r.v,
+      checkStyle: { width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${s.reminderMinutes === r.v ? t.accent : t.glassBorder}`, background: s.reminderMinutes === r.v ? t.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+      select: () => this.setReminderMinutes(r.v),
+    }));
+
+    // Health metrics — real data (from the iOS Shortcut webhook, keyed by
+    // date in s.realHealth) replaces the illustrative mock per-metric, once
+    // there's at least one real day to show. ALLENAMENTI (workout count) and
+    // the workout calendar below stay illustrative for now: a daily Shortcut
+    // summary doesn't cleanly capture per-workout detail (zones, exercises)
+    // the way weight/sleep/avgHr/kcalBurned are single daily numbers.
+    const healthDates = Object.keys(s.realHealth || {}).sort().slice(-7);
+    const latestHealth = healthDates.length ? s.realHealth[healthDates[healthDates.length - 1]] : null;
+    const prevHealth = healthDates.length > 1 ? s.realHealth[healthDates[healthDates.length - 2]] : null;
+    const realSeries = (field) => healthDates.map(d => s.realHealth[d]?.[field]).filter(v => typeof v === 'number');
+    const avgOf = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const fmt1 = (v) => v.toFixed(1).replace('.', ',');
+
+    const metricsData = [
+      (() => {
+        const series = realSeries('weight');
+        if (!series.length) return { label: 'PESO', value: '64,8 kg', avg: '64,5 kg', delta: '+0,3 kg', positive: true, spark: [65.4, 65.1, 64.9, 65.0, 64.7, 64.6, 64.8] };
+        const delta = prevHealth?.weight != null ? latestHealth.weight - prevHealth.weight : 0;
+        return {
+          label: 'PESO', value: `${fmt1(latestHealth.weight)} kg`, avg: `${fmt1(avgOf(series))} kg`,
+          delta: `${delta >= 0 ? '+' : ''}${fmt1(delta)} kg`, positive: delta <= 0, spark: series,
+        };
+      })(),
+      (() => {
+        const series = realSeries('sleepHours');
+        if (!series.length) return { label: 'SONNO', value: '7h 12m', avg: '6h 48m', delta: '+24 min', positive: true, spark: [390, 410, 380, 400, 415, 405, 432] };
+        const toHM = (h) => `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`;
+        const deltaMin = prevHealth?.sleepHours != null ? Math.round((latestHealth.sleepHours - prevHealth.sleepHours) * 60) : 0;
+        return {
+          label: 'SONNO', value: toHM(latestHealth.sleepHours), avg: toHM(avgOf(series)),
+          delta: `${deltaMin >= 0 ? '+' : ''}${deltaMin} min`, positive: deltaMin >= 0, spark: series.map(h => h * 60),
+        };
+      })(),
+      { label: 'ALLENAMENTI', value: '3 / 4', avg: '3,4 /sett', delta: '-1 vs media', positive: false, spark: [4, 3, 4, 3, 4, 4, 3] },
+      (() => {
+        const series = realSeries('avgHr');
+        if (!series.length) return { label: 'BATTITO MEDIO ALLENAMENTO', value: '138 bpm', avg: '141 bpm', delta: '-3 bpm', positive: true, spark: [145, 143, 142, 140, 141, 139, 138] };
+        const delta = prevHealth?.avgHr != null ? latestHealth.avgHr - prevHealth.avgHr : 0;
+        return {
+          label: 'BATTITO MEDIO ALLENAMENTO', value: `${Math.round(latestHealth.avgHr)} bpm`, avg: `${Math.round(avgOf(series))} bpm`,
+          delta: `${delta >= 0 ? '+' : ''}${Math.round(delta)} bpm`, positive: delta <= 0, spark: series,
+        };
+      })(),
+      (() => {
+        const series = realSeries('kcalBurned');
+        if (!series.length) return { label: 'CALORIE BRUCIATE', value: '420 kcal', avg: '385 kcal', delta: '+35 kcal', positive: true, spark: [340, 380, 140, 420, 410, 110, 620] };
+        const delta = prevHealth?.kcalBurned != null ? latestHealth.kcalBurned - prevHealth.kcalBurned : 0;
+        return {
+          label: 'CALORIE BRUCIATE', value: `${Math.round(latestHealth.kcalBurned)} kcal`, avg: `${Math.round(avgOf(series))} kcal`,
+          delta: `${delta >= 0 ? '+' : ''}${Math.round(delta)} kcal`, positive: delta >= 0, spark: series,
+        };
+      })(),
+    ];
+    const healthMetrics = metricsData.map(m => ({
+      label: m.label, value: m.value, avg: m.avg, deltaLabel: m.delta,
+      deltaStyle: { fontSize: 12.5, fontWeight: 700, color: m.positive ? t.green : t.red },
+      sparkPoints: fmtSpark(m.spark, 100, 28, 3), sparkStroke: { stroke: m.positive ? t.green : t.red },
+    }));
+
+    // workout calendar
+    const calView = {
+      weekStyle: { ...periodPillBase, background: s.calView === 'settimana' ? t.accent : 'transparent', color: s.calView === 'settimana' ? 'white' : t.text2 },
+      monthStyle: { ...periodPillBase, background: s.calView === 'mese' ? t.accent : 'transparent', color: s.calView === 'mese' ? 'white' : t.text2 },
+      selectWeek: () => this.setCalView('settimana'), selectMonth: () => this.setCalView('mese'),
+    };
+    const typeColor = { Forza: t.accent, Cardio: t.red, 'Mobilità': t.teal };
+    const workoutTypeOptions = ['Forza', 'Cardio', 'Mobilità'];
+    const workoutLegend = workoutTypeOptions.map(l => ({ label: l, dotStyle: { width: 8, height: 8, borderRadius: '50%', background: typeColor[l] } }));
+    const weekdayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+    const workoutsByDate = {};
+    for (const w of s.workouts) (workoutsByDate[w.date] ??= []).push(w);
+    const nowHourFrac = now.getHours() + now.getMinutes() / 60;
+    const workoutDays = [0, 1, 2, 3, 4, 5, 6].map(offset => {
+      const d = new Date(now);
+      d.setDate(now.getDate() + offset);
+      const isToday = offset === 0;
+      const dow = d.getDay();
+      const dateIso = localDateStr(d);
+      const items = (workoutsByDate[dateIso] || []).sort((a, b) => a.time.localeCompare(b.time));
+      const workouts = items.map(w => ({
+        title: w.title, time: w.time, duration: w.durationMinutes,
+        chipStyle: { borderLeft: `2.5px solid ${typeColor[w.type]}`, background: dark ? `${typeColor[w.type]} / 0.14` : `${typeColor[w.type]} / 0.1`, borderRadius: 8, padding: '7px 9px', cursor: 'pointer' },
+        titleStyle: { fontSize: 12, fontWeight: 700, color: t.text1 },
+        metaStyle: { fontSize: 10.5, color: t.text2, marginTop: 2 },
+        onClick: () => this.openWorkout(w),
+      }));
+      return {
+        name: weekdayNames[dow], num: d.getDate(),
+        headerStyle: { padding: '6px 8px', borderBottom: `2px solid ${isToday ? t.accent : t.glassBorder}`, background: isToday ? t.accentSoft : 'transparent' },
+        showLine: isToday && nowHourFrac >= 6 && nowHourFrac <= 22,
+        lineStyle: { position: 'absolute', left: 0, right: 0, top: ((nowHourFrac - 6) / 16 * 100) + '%', height: 2, background: t.red, zIndex: 2 },
+        workouts,
+        addStyle: styles.addWorkoutBtn,
+        onAdd: () => this.openNewWorkout(dateIso),
+      };
+    });
+
+    const hasSelectedWorkout = !!s.selectedWorkout;
+    const draft = s.selectedWorkout || { id: null, date: '', type: 'Forza', title: '', time: '', durationMinutes: '', exercises: [], notes: '' };
+    const drawerHeading = draft.id ? draft.title || 'Allenamento' : 'Nuovo allenamento';
+    const wf = {
+      type: draft.type,
+      onTypeChange: (e) => this.setWorkoutField('type', e.target.value),
+      date: draft.date,
+      onDateChange: (e) => this.setWorkoutField('date', e.target.value),
+      title: draft.title,
+      onTitleChange: (e) => this.setWorkoutField('title', e.target.value),
+      time: draft.time,
+      onTimeChange: (e) => this.setWorkoutField('time', e.target.value),
+      durationMinutes: draft.durationMinutes,
+      onDurationChange: (e) => this.setWorkoutField('durationMinutes', e.target.value),
+      notes: draft.notes,
+      onNotesChange: (e) => this.setWorkoutField('notes', e.target.value),
+      exercises: draft.exercises.map((ex, i) => ({
+        name: ex.name, sets: ex.sets, load: ex.load,
+        onNameChange: (e) => this.setExerciseField(i, 'name', e.target.value),
+        onSetsChange: (e) => this.setExerciseField(i, 'sets', e.target.value),
+        onLoadChange: (e) => this.setExerciseField(i, 'load', e.target.value),
+        remove: () => this.removeExerciseRow(i),
+      })),
+      addExercise: this.addExerciseRow,
+      canDelete: !!draft.id,
+      save: this.saveWorkout,
+      remove: this.deleteWorkout,
+    };
+
+    const chatSuggestions = ['Sostituisci il pranzo', 'Come chiudo le proteine di oggi?', 'Idee spuntino da 300 kcal'].map(label => ({ label, select: () => this.setState({ chatText: label }) }));
+
+    // TREND IA — real Gemini output cached server-side (see
+    // /api/lifeos-fitness-trend), refreshed once a day automatically or on
+    // demand via the ↻ button (loadTrend(true)).
+    const trendLines = s.fitnessTrend?.lines || [];
+    const trendUpdatedLabel = s.trendLoading ? 'Aggiornamento…' : s.fitnessTrend?.generatedAtIso
+      ? (() => {
+          const gen = new Date(s.fitnessTrend.generatedAtIso);
+          const sameDay = gen.toDateString() === now.toDateString();
+          return sameDay
+            ? `Aggiornato alle ${gen.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
+            : `Aggiornato il ${gen.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}`;
+        })()
+      : '';
+
+    return {
+      styles, timeStr, dateStr, toggleTheme: this.toggleTheme,
+      kcal, macros, meals,
+      importOpen: s.importOpen, toggleImport: this.toggleImport, reminderOptions, confirmImport: this.confirmImport,
+      addMealOpen: s.addMealOpen, toggleAddMeal: this.toggleAddMeal,
+      newMealName: s.newMealName,
+      onNewMealNameChange: (e) => { const v = e.target.value; this.setState({ newMealName: v }); this.searchMealFood(v); },
+      newMealKcal: s.newMealKcal, onNewMealKcalChange: (e) => this.setState({ newMealKcal: e.target.value }),
+      addMeal: this.addMeal,
+      hasMealSearchResults: s.mealSearchResults.length > 0,
+      mealSearchResults: s.mealSearchResults.map((food) => ({
+        name: food.brand ? `${food.name} (${food.brand})` : food.name,
+        description: food.description,
+        select: () => this.pickMealSearchResult(food),
+      })),
+      fatsecretSyncLabel: s.fatsecretSyncLabel,
+      fatsecretConnected: s.fatsecretConnected, fatsecretNotConnected: !s.fatsecretConnected,
+      fatsecretConnectHref: location.pathname.replace(/\/[^/]*$/, '') + '/api/lifeos-fatsecret-connect',
+      disconnectFatsecret: this.disconnectFatsecret,
+      nutritionModes, calorieTargetLabel: s.calorieTarget.toLocaleString('it-IT') + ' kcal', incTarget: this.incTarget, decTarget: this.decTarget,
+      goalMacroItems, goalNote,
+      healthMetrics, workoutLegend, calView, workoutDays, workoutTypeOptions,
+      hasSelectedWorkout, drawerHeading, wf, closeWorkout: this.closeWorkout,
+      trendLines, hasTrendError: !!s.trendError, trendError: s.trendError || '',
+      trendUpdatedLabel, refreshTrend: this.refreshTrend,
+      showMealSuggestion: s.showMealSuggestion, dismissSuggestion: this.dismissSuggestion,
+      suggestionExpanded: s.suggestionExpanded, suggestionExpandLabel: s.suggestionExpanded ? 'Riduci' : 'Dettagli', toggleSuggestionExpand: this.toggleSuggestionExpand,
+      chatSuggestions, chatText: s.chatText, lastReply: s.lastReply,
+      onChatChange: (e) => this.setState({ chatText: e.target.value }),
+      onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
+      onChatSubmit: this.onChatSubmit,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

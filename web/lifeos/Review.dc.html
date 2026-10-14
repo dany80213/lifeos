@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./jarvis-client.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-variant-numeric: tabular-nums; }
+  a { color: inherit; text-decoration: none; }
+  a:hover { opacity: 0.8; }
+  @keyframes blobDrift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,-40px) scale(1.12); } }
+  @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
+  @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
+  input::placeholder { color: inherit; opacity: 0.45; }
+</style>
+</helmet>
+<div style="{{ styles.page }}">
+  <div style="{{ styles.blobA }}"></div>
+  <div style="{{ styles.blobB }}"></div>
+  <div style="{{ styles.blobC }}"></div>
+
+  <div style="{{ styles.navWrap }}">
+    <div style="{{ styles.navbar }}">
+      <div style="{{ styles.navLeft }}">
+        <div style="{{ styles.logo }}">LifeOS</div>
+        <div style="{{ styles.tabRow }}">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
+          <div style="{{ styles.tabActive }}">Review</div>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+        </div>
+      </div>
+      <div style="{{ styles.navRight }}">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+          <div style="{{ styles.themeKnob }}"></div>
+        </div>
+        <div style="{{ styles.clockBlock }}">
+          <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
+          <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
+        </div>
+        <a href="Profilo.dc.html" style="{{ styles.navAvatarLink }}"><div style="{{ styles.navAvatar }}">D</div></a>
+      </div>
+    </div>
+  </div>
+
+  <div style="{{ styles.container }}">
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.headerRow }}">
+        <div>
+          <div style="{{ styles.cardLabel }}">REVIEW SETTIMANALE</div>
+          <div style="{{ styles.weekBig }}">{{ weekBigLabel }}</div>
+          <div style="{{ styles.weekRange }}">{{ weekRangeLabel }}</div>
+        </div>
+        <div style="{{ closeBtn.style }}" style-hover="{{ closeBtn.hoverStyle }}" style-active="{{ closeBtn.activeStyle }}">
+          <div style="{{ styles.checkIcon }}"></div>
+          Chiudi la settimana
+        </div>
+      </div>
+      <div style="{{ styles.weekProgressRow }}">
+        <div style="{{ styles.weekProgressTrack }}">
+          <div style="{{ styles.weekProgressFill }}"></div>
+        </div>
+        <div style="{{ styles.weekProgressLabel }}">{{ weekProgressLabel }}</div>
+      </div>
+    </div>
+
+    <div style="{{ styles.rowPair }}">
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">COSA È ANDATO BENE</div>
+        <div style="{{ styles.itemList }}">
+          <sc-for list="{{ wins }}" as="w" hint-placeholder-count="5">
+            <div style="{{ styles.itemRow }}">
+              <div style="{{ w.iconStyle }}"><div style="{{ styles.winGlyph }}"></div></div>
+              <div style="{{ styles.itemText }}">{{ w.text }}</div>
+              <div style="{{ w.chipStyle }}">{{ w.chip }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ !hasWins }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.itemEmpty }}">Nessuna abitudine rispettata al 100% finora, questa settimana.</div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">COSA È SLITTATO</div>
+        <div style="{{ styles.itemList }}">
+          <sc-for list="{{ slips }}" as="sl" hint-placeholder-count="4">
+            <div style="{{ styles.itemRow }}">
+              <div style="{{ sl.iconStyle }}">
+                <div style="{{ styles.slipGlyph }}">
+                  <div style="{{ styles.slipHandHour }}"></div>
+                  <div style="{{ styles.slipHandMin }}"></div>
+                </div>
+              </div>
+              <div style="{{ styles.itemText }}">{{ sl.text }}</div>
+              <div style="{{ sl.chipStyle }}">{{ sl.chip }}</div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ !hasSlips }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.itemEmpty }}">Nessun giorno mancato finora, questa settimana.</div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.cardHeaderRow }}">
+        <div style="{{ styles.cardTitle }}">ANCORA DA FARE QUESTA SETTIMANA</div>
+        <div style="{{ styles.remainingBadge }}">{{ remainingCount }} rimasti</div>
+      </div>
+      <div style="{{ styles.taskList }}">
+        <sc-for list="{{ weekTasks }}" as="wt" hint-placeholder-count="5">
+          <div style="{{ wt.rowStyle }}" onClick="{{ wt.toggle }}">
+            <div style="{{ wt.checkStyle }}">
+              <sc-if value="{{ wt.done }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ styles.checkMark }}"></div>
+              </sc-if>
+            </div>
+            <div style="{{ wt.titleStyle }}">{{ wt.title }}</div>
+            <div style="{{ wt.tagStyle }}">{{ wt.tag }}</div>
+            <div style="{{ wt.dueStyle }}">{{ wt.due }}</div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ !hasWeekTasks }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.itemEmpty }}">Niente in programma per il resto della settimana.</div>
+        </sc-if>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="{{ styles.chatBarWrap }}">
+    <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
+    </sc-if>
+    <div style="{{ styles.chatSuggestions }}">
+      <sc-for list="{{ chatSuggestions }}" as="cs" hint-placeholder-count="3">
+        <div style="{{ styles.chatChip }}" onClick="{{ cs.select }}">{{ cs.label }}</div>
+      </sc-for>
+    </div>
+    <div style="{{ styles.chatBar }}">
+      <div style="{{ styles.chatIcon }}">✦</div>
+      <input style="{{ styles.chatInput }}" placeholder="Chiedi all'AI di LifeOS della tua settimana…" value="{{ chatText }}" onChange="{{ onChatChange }}" onKeyDown="{{ onChatKeyDown }}"></input>
+      <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+function tok(theme) {
+  const dark = theme === 'dark';
+  return {
+    dark,
+    bg: dark ? 'oklch(15% 0.03 280)' : 'oklch(97% 0.006 280)',
+    text1: dark ? 'oklch(97% 0.01 280)' : 'oklch(22% 0.02 280)',
+    text2: dark ? 'oklch(75% 0.02 280)' : 'oklch(46% 0.02 280)',
+    text3: dark ? 'oklch(58% 0.02 280)' : 'oklch(58% 0.02 280)',
+    glassBg: dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)',
+    glassBgSoft: dark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.4)',
+    glassBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)',
+    trackBg: dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
+    accent: dark ? 'oklch(68% 0.13 235)' : 'oklch(55% 0.22 235)',
+    accentSoft: dark ? 'oklch(68% 0.13 235 / 0.16)' : 'oklch(55% 0.22 235 / 0.14)',
+    green: dark ? 'oklch(74% 0.11 150)' : 'oklch(50% 0.16 150)',
+    greenSoft: dark ? 'oklch(74% 0.11 150 / 0.13)' : 'oklch(50% 0.16 150 / 0.1)',
+    amber: dark ? 'oklch(74% 0.10 65)' : 'oklch(58% 0.16 60)',
+    amberSoft: dark ? 'oklch(74% 0.10 65 / 0.13)' : 'oklch(58% 0.16 60 / 0.1)',
+    shadow: dark ? '0 20px 50px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' : '0 20px 40px -14px rgba(60,50,100,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+  };
+}
+
+const ITALIAN_MONTHS = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+// "14 – 20 Settembre 2026", or "28 Settembre – 4 Ottobre 2026" for a week
+// that crosses a month (and the year too, for the very last week of one).
+function formatWeekRange(startIso, endIso) {
+  const start = new Date(startIso + 'T00:00:00');
+  const end = new Date(endIso + 'T00:00:00');
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+    return `${start.getDate()} – ${end.getDate()} ${ITALIAN_MONTHS[start.getMonth()]} ${start.getFullYear()}`;
+  }
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const startLabel = `${start.getDate()} ${ITALIAN_MONTHS[start.getMonth()]}${sameYear ? '' : ' ' + start.getFullYear()}`;
+  return `${startLabel} – ${end.getDate()} ${ITALIAN_MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+class Component extends DCLogic {
+  state = {
+    theme: (window.LifeOSJarvis && window.LifeOSJarvis.getTheme) ? window.LifeOSJarvis.getTheme() : 'dark',
+    now: new Date(),
+    chatText: '',
+    lastReply: null,
+    // Real only — refreshLifeOSData populates both from /api/lifeos-data.
+    // weekTasks used to ship with 5 made-up examples that never went away
+    // even once real reminders loaded; now it starts empty and only ever
+    // holds this week's actual not-yet-done reminders.
+    weekTasks: [],
+    reviewWeek: null, // { year, week, startIso, endIso, daysElapsed, successDays, habits: [...] } — see lifeos-review.mjs
+  };
+
+  componentDidMount() {
+    this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    this.refreshLifeOSData();
+  }
+  componentWillUnmount() { clearInterval(this._timer); }
+
+  // Shared by the initial mount and by onChatSubmit after a successful
+  // add_reminder — re-reads the real store rather than reconstruct the
+  // record client-side, so the list matches exactly what was saved.
+  refreshLifeOSData = () => {
+    return window.LifeOSJarvis.fetchData().then(data => {
+      // "Ancora da fare questa settimana" — not-yet-done reminders due
+      // between now and the end of THIS week (Sunday night). One with no
+      // due date, or due past this week, belongs on Home's todo list or a
+      // future week, not here.
+      const weekEndIso = data.reviewWeek ? data.reviewWeek.endIso : null;
+      const weekEnd = weekEndIso ? new Date(weekEndIso + 'T23:59:59') : null;
+      const mapped = (data.reminders || [])
+        .filter(r => !r.done && r.when && (!weekEnd || new Date(r.when) <= weekEnd))
+        .map(r => ({
+          id: r.id, title: r.text, tag: 'Promemoria',
+          due: new Date(r.when).toLocaleString('it-IT', { weekday: 'short', hour: '2-digit', minute: '2-digit' }),
+          done: false, source: 'reminder',
+        }));
+      this.setState({ weekTasks: mapped, reviewWeek: data.reviewWeek || null });
+    }).catch(() => {});
+  };
+
+  toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
+  // Every task here is a real reminder now — completing it deletes it
+  // outright (see lifeos-store.mjs's completeReminder), not just crosses it
+  // out, so it's gone from the list immediately rather than waiting on a
+  // refetch.
+  toggleTask = (id) => {
+    window.LifeOSJarvis.completeReminder(id).catch(() => {});
+    this.setState(s => ({ weekTasks: s.weekTasks.filter(w => w.id !== id) }));
+  };
+  onChatSubmit = () => {
+    const text = this.state.chatText.trim();
+    if (!text) return;
+    this.setState({ chatText: '', lastReply: null });
+    window.LifeOSJarvis.ask(text, null, 'review').then(reply => {
+      this.setState({ lastReply: reply.text || '...' });
+      if (reply.action && reply.data) this.refreshLifeOSData();
+    }).catch(err => {
+      this.setState({ lastReply: 'Non riesco a rispondere: ' + err.message });
+    });
+  };
+
+  renderVals() {
+    const s = this.state;
+    const t = tok(s.theme);
+    const dark = t.dark;
+    const glass = {
+      background: t.glassBg, backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+      border: `1px solid ${t.glassBorder}`, boxShadow: t.shadow,
+    };
+    const card = { ...glass, borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, color: t.text1, boxSizing: 'border-box' };
+
+    const timeStr = s.now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = s.now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, c => c.toUpperCase());
+
+    const styles = {
+      page: { position: 'relative', minHeight: '100vh', width: '100%', overflowX: 'hidden', background: t.bg, transition: 'background 0.4s ease' },
+      blobA: { position: 'fixed', top: '-10%', left: '5%', width: 640, height: 640, borderRadius: '50%', background: dark ? 'oklch(55% 0.20 300)' : 'oklch(88% 0.07 300)', filter: 'blur(120px)', opacity: 0.55, animation: 'blobDrift1 26s ease-in-out infinite' },
+      blobB: { position: 'fixed', top: '20%', right: '0%', width: 560, height: 560, borderRadius: '50%', background: dark ? 'oklch(55% 0.15 200)' : 'oklch(90% 0.06 195)', filter: 'blur(120px)', opacity: 0.5, animation: 'blobDrift2 30s ease-in-out infinite' },
+      blobC: { position: 'fixed', bottom: '-15%', left: '30%', width: 620, height: 620, borderRadius: '50%', background: dark ? 'oklch(48% 0.18 265)' : 'oklch(90% 0.05 340)', filter: 'blur(130px)', opacity: 0.45, animation: 'blobDrift3 34s ease-in-out infinite' },
+      container: { position: 'relative', zIndex: 1, maxWidth: 1440, margin: '0 auto', padding: '0 32px 160px', display: 'flex', flexDirection: 'column', gap: 24 },
+      navWrap: { position: 'relative', zIndex: 1, width: '100%', marginBottom: 24 },
+      navbar: { ...glass, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', width: '100%', boxSizing: 'border-box', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: t.text1 },
+      navLeft: { display: 'flex', alignItems: 'center', gap: 32 },
+      logo: { fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em', color: t.text1 },
+      tabRow: { display: 'flex', alignItems: 'center', gap: 6 },
+      tabLink: { display: 'flex' },
+      tab: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 500, color: t.text2, cursor: 'pointer' },
+      tabActive: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600, color: t.text1, background: t.accentSoft, cursor: 'pointer' },
+      navRight: { display: 'flex', alignItems: 'center', gap: 12 },
+      themeSwitch: { width: 42, height: 24, borderRadius: 8, background: t.trackBg, border: `1px solid ${t.glassBorder}`, position: 'relative', cursor: 'pointer', flexShrink: 0 },
+      themeKnob: { position: 'absolute', top: 2, left: dark ? 2 : 20, width: 18, height: 18, borderRadius: 5, background: t.accent, transition: 'left 0.25s ease' },
+      clockBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 6 },
+      clockTime: { fontSize: 14, fontWeight: 700, color: t.text1 },
+      clockDate: { fontSize: 12, color: t.text2, marginTop: 2 },
+      navAvatarLink: { display: 'flex' },
+      navAvatar: { width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, cursor: 'pointer' },
+
+      card,
+      cardLabel: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+      cardTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+      cardHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+
+      headerRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 },
+      weekBig: { fontSize: 38, fontWeight: 800, color: t.text1, marginTop: 8, letterSpacing: '-0.01em' },
+      weekRange: { fontSize: 14, color: t.text2, marginTop: 6 },
+      checkIcon: { width: 10, height: 7, borderLeft: '2px solid white', borderBottom: '2px solid white', transform: 'rotate(-45deg) translate(1px,-1px)' },
+      weekProgressRow: { display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 },
+      weekProgressTrack: { flex: 1, height: 8, borderRadius: 999, background: t.trackBg, overflow: 'hidden' },
+      weekProgressFill: { height: '100%', width: (6 / 7 * 100) + '%', borderRadius: 999, background: `linear-gradient(90deg, ${t.accent}, oklch(70% 0.18 250))` },
+      weekProgressLabel: { fontSize: 12.5, color: t.text2, whiteSpace: 'nowrap' },
+
+      rowPair: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 },
+      itemList: { display: 'flex', flexDirection: 'column', gap: 4 },
+      itemRow: { display: 'flex', alignItems: 'center', gap: 14, padding: '12px 4px', borderTop: `1px solid ${t.glassBorder}` },
+      itemText: { flex: 1, fontSize: 14, color: t.text1, lineHeight: 1.4 },
+      itemEmpty: { fontSize: 13, color: t.text3, padding: '10px 4px' },
+
+      remainingBadge: { fontSize: 12.5, fontWeight: 700, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, padding: '5px 12px' },
+      taskList: { display: 'flex', flexDirection: 'column', gap: 2 },
+      checkMark: { width: 10, height: 6, borderLeft: '2px solid white', borderBottom: '2px solid white', transform: 'rotate(-45deg) translate(1px,-1px)' },
+      winGlyph: { width: 14, height: 9, borderLeft: `2.5px solid ${t.green}`, borderBottom: `2.5px solid ${t.green}`, transform: 'rotate(-45deg) translate(1px,-2px)' },
+      slipGlyph: { width: 17, height: 17, borderRadius: '50%', border: `2px solid ${t.amber}`, position: 'relative', boxSizing: 'border-box' },
+      slipHandHour: { position: 'absolute', left: '50%', bottom: '50%', width: 2, height: 5, background: t.amber, transformOrigin: 'bottom center', transform: 'translateX(-50%) rotate(0deg)' },
+      slipHandMin: { position: 'absolute', left: '50%', bottom: '50%', width: 2, height: 6.5, background: t.amber, transformOrigin: 'bottom center', transform: 'translateX(-50%) rotate(90deg)' },
+
+      chatBarWrap: { position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', width: 'min(680px, 92vw)', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' },
+      replyBubble: { ...glass, borderRadius: 14, padding: '12px 16px', fontSize: 13.5, lineHeight: 1.5, color: t.text1, width: '100%', boxSizing: 'border-box' },
+      chatSuggestions: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+      chatChip: { ...glass, borderRadius: 999, padding: '7px 14px', fontSize: 12.5, color: t.text2, cursor: 'pointer' },
+      chatBar: { ...glass, borderRadius: 14, padding: '8px 8px 8px 14px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' },
+      chatIcon: { fontSize: 15, color: t.accent, flexShrink: 0 },
+      chatInput: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: t.text1, fontSize: 14, fontFamily: 'Inter' },
+      chatSend: { width: 38, height: 38, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16 },
+    };
+
+    const closeBtn = {
+      style: { display: 'flex', alignItems: 'center', gap: 10, background: t.accent, color: 'white', fontSize: 14.5, fontWeight: 700, padding: '13px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: `0 8px 24px -6px ${dark ? 'oklch(68% 0.20 235 / 0.55)' : 'oklch(55% 0.22 235 / 0.4)'}`, transition: 'all 0.15s ease', flexShrink: 0 },
+      hoverStyle: { filter: 'brightness(1.08)', transform: 'translateY(-1px)', boxShadow: `0 12px 28px -6px ${dark ? 'oklch(68% 0.20 235 / 0.65)' : 'oklch(55% 0.22 235 / 0.5)'}` },
+      activeStyle: { transform: 'translateY(0px) scale(0.98)', filter: 'brightness(0.96)' },
+    };
+
+    const iconDot = (color, glow) => ({ width: 30, height: 30, borderRadius: '50%', background: dark ? `${color} / 0.16` : `${color} / 0.12`, flexShrink: 0, boxShadow: `0 0 0 1px ${glow} inset, 0 0 14px -2px ${glow}` });
+
+    // Both cards read the same real per-habit numbers from reviewWeek (see
+    // lifeos-review.mjs) — a habit with every scheduled day done so far is
+    // a win, one with at least one missed day is a slip, naming exactly
+    // which days. A habit with nothing scheduled yet this week (added
+    // today, or scoped to days still ahead) has nothing to report either
+    // way and shows in neither list.
+    const weekHabits = (s.reviewWeek && s.reviewWeek.habits) || [];
+    const wins = weekHabits
+      .filter(h => h.scheduledCount > 0 && h.missedWeekdays.length === 0)
+      .map(h => ({
+        text: h.name, chip: `${h.doneCount}/${h.scheduledCount}`,
+        iconStyle: { width: 30, height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        chipStyle: { fontSize: 13, fontWeight: 700, color: t.green, background: t.greenSoft, borderRadius: 8, padding: '6px 12px', whiteSpace: 'nowrap' },
+      }));
+    const hasWins = wins.length > 0;
+
+    const slips = weekHabits
+      .filter(h => h.missedWeekdays.length > 0)
+      .map(h => ({
+        text: `${h.name} — mancata ${h.missedWeekdays.join(', ')}`, chip: `${h.doneCount}/${h.scheduledCount}`,
+        iconStyle: { width: 30, height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        chipStyle: { fontSize: 13, fontWeight: 700, color: t.amber, background: t.amberSoft, borderRadius: 8, padding: '6px 12px', whiteSpace: 'nowrap' },
+      }));
+    const hasSlips = slips.length > 0;
+
+    // Checking one off completes the real reminder (and removes it — see
+    // toggleTask), so nothing here is ever rendered already-done; the row
+    // only needs its resting, unchecked look.
+    const weekTasks = s.weekTasks.map(wt => ({
+      title: wt.title, tag: wt.tag, due: wt.due, done: false,
+      rowStyle: { display: 'flex', alignItems: 'center', gap: 14, padding: '12px 6px', borderRadius: 12, cursor: 'pointer', transition: 'opacity 0.35s ease, transform 0.35s ease' },
+      checkStyle: { width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${t.glassBorder}`, background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.25s ease' },
+      titleStyle: { flex: 1, fontSize: 14.5, color: t.text1 },
+      tagStyle: { fontSize: 11.5, fontWeight: 600, color: t.text2, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 999, padding: '4px 12px', whiteSpace: 'nowrap' },
+      dueStyle: { fontSize: 12.5, fontWeight: 700, color: t.text2, minWidth: 36, textAlign: 'right' },
+      toggle: () => this.toggleTask(wt.id),
+    }));
+    const remainingCount = s.weekTasks.length;
+    const hasWeekTasks = remainingCount > 0;
+
+    // Gemini (the section's default assistant — see runGeminiModel in
+    // server.mjs) gets 8 weeks of real habit history with every message
+    // here, so both of these are answerable with real numbers, and a
+    // specific week works just as well typed in free text ("confronta con
+    // la settimana 35").
+    const chatSuggestions = ['Genera riepilogo settimana', 'Confronta con settimana scorsa', "Com'è andata rispetto al solito?"].map(label => ({ label, select: () => this.setState({ chatText: label }) }));
+
+    // Real week number/range/progress — "Settimana 38" used to be
+    // hardcoded no matter what today's date actually was. successDays is
+    // the same "every scheduled habit done" count as Home's STREAK
+    // ABITUDINI, just totalled for this week instead of walked backward
+    // indefinitely — see lifeos-review.mjs.
+    const weekBigLabel = s.reviewWeek ? `Settimana ${s.reviewWeek.week}` : '—';
+    const weekRangeLabel = s.reviewWeek ? formatWeekRange(s.reviewWeek.startIso, s.reviewWeek.endIso) : '';
+    const successDays = s.reviewWeek ? s.reviewWeek.successDays : 0;
+    const weekProgressPct = s.reviewWeek ? Math.round((successDays / 7) * 100) : 0;
+    styles.weekProgressFill = { ...styles.weekProgressFill, width: weekProgressPct + '%' };
+
+    return {
+      styles, timeStr, dateStr, toggleTheme: this.toggleTheme,
+      closeBtn, wins, hasWins, slips, hasSlips, weekTasks, remainingCount, hasWeekTasks,
+      weekBigLabel, weekRangeLabel, weekProgressLabel: `${successDays} giorni su 7`,
+      chatSuggestions, chatText: s.chatText, lastReply: s.lastReply,
+      onChatChange: (e) => this.setState({ chatText: e.target.value }),
+      onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
+      onChatSubmit: this.onChatSubmit,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

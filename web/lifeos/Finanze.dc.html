@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./jarvis-client.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-variant-numeric: tabular-nums; }
+  a { color: inherit; text-decoration: none; }
+  a:hover { opacity: 0.8; }
+  @keyframes blobDrift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,-40px) scale(1.12); } }
+  @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
+  @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  input::placeholder { color: inherit; opacity: 0.45; }
+</style>
+</helmet>
+<div style="{{ styles.page }}">
+  <div style="{{ styles.blobA }}"></div>
+  <div style="{{ styles.blobB }}"></div>
+  <div style="{{ styles.blobC }}"></div>
+
+  <div style="{{ styles.navWrap }}">
+    <div style="{{ styles.navbar }}">
+      <div style="{{ styles.navLeft }}">
+        <div style="{{ styles.logo }}">LifeOS</div>
+        <div style="{{ styles.tabRow }}">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
+          <div style="{{ styles.tabActive }}">Finanze</div>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+        </div>
+      </div>
+      <div style="{{ styles.navRight }}">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+          <div style="{{ styles.themeKnob }}"></div>
+        </div>
+        <div style="{{ btc.chipStyle }}">
+          <span style="{{ styles.chipLabel }}">BTC</span>
+          <span style="{{ styles.chipPrice }}">{{ btc.price }}</span>
+          <span style="{{ btc.arrowStyle }}"></span>
+          <span style="{{ btc.deltaStyle }}">{{ btc.change }}</span>
+        </div>
+        <div style="{{ eunl.chipStyle }}">
+          <span style="{{ styles.chipLabel }}">EUNL</span>
+          <span style="{{ styles.chipPrice }}">{{ eunl.price }}</span>
+          <span style="{{ eunl.arrowStyle }}"></span>
+          <span style="{{ eunl.deltaStyle }}">{{ eunl.change }}</span>
+        </div>
+        <div style="{{ styles.clockBlock }}">
+          <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
+          <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
+        </div>
+        <a href="Profilo.dc.html" style="{{ styles.navAvatarLink }}"><div style="{{ styles.navAvatar }}">D</div></a>
+      </div>
+    </div>
+  </div>
+
+  <div style="{{ styles.container }}">
+
+    <div style="{{ styles.toggleRow }}">
+      <div style="{{ styles.segToggle }}">
+        <div style="{{ tabPill.overviewStyle }}" onClick="{{ tabPill.selectOverview }}">Panoramica</div>
+        <div style="{{ tabPill.investStyle }}" onClick="{{ tabPill.selectInvest }}">Investimenti</div>
+      </div>
+    </div>
+
+    <div style="{{ styles.card }}">
+      <div style="{{ styles.heroTop }}">
+        <div>
+          <div style="{{ styles.cardLabel }}">{{ hero.label }}</div>
+          <div style="{{ styles.heroBig }}">{{ hero.big }}</div>
+          <div style="{{ styles.heroUpdated }}">aggiornato adesso</div>
+        </div>
+        <div style="{{ hero.deltaChipStyle }}">{{ hero.deltaText }}</div>
+      </div>
+
+      <div style="{{ styles.chartHeaderRow }}">
+        <div style="{{ styles.cardLabel }}">{{ hero.chartTitle }}</div>
+        <div style="{{ styles.segmentRowSmall }}">
+          <div style="{{ periodPill.p30Style }}" onClick="{{ periodPill.select30 }}">30 giorni</div>
+          <div style="{{ periodPill.p1yStyle }}" onClick="{{ periodPill.select1y }}">1 anno</div>
+        </div>
+      </div>
+      <div style="{{ styles.chartWrap }}" onMouseMove="{{ chart.onMove }}" onMouseLeave="{{ chart.onLeave }}">
+        <svg viewBox="0 0 1000 240" style="{{ styles.chartSvg }}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="{{ chart.gradColor }}" stop-opacity="0.35"></stop>
+              <stop offset="100%" stop-color="{{ chart.gradColor }}" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path d="{{ chart.areaPath }}" fill="url(#areaGrad)" stroke="none"></path>
+          <path d="{{ chart.linePath }}" fill="none" stroke-width="3" style="{{ styles.chartStroke }}"></path>
+          <circle cx="{{ chart.minPt.x }}" cy="{{ chart.minPt.y }}" r="4" style="{{ styles.chartMarkerMin }}"></circle>
+          <circle cx="{{ chart.maxPt.x }}" cy="{{ chart.maxPt.y }}" r="4" style="{{ styles.chartMarkerMax }}"></circle>
+          <sc-if value="{{ chart.hasHover }}" hint-placeholder-val="{{ false }}">
+            <line x1="{{ chart.hoverPt.x }}" y1="0" x2="{{ chart.hoverPt.x }}" y2="240" style="{{ styles.chartHoverLine }}"></line>
+            <circle cx="{{ chart.hoverPt.x }}" cy="{{ chart.hoverPt.y }}" r="5" style="{{ styles.chartHoverDot }}"></circle>
+          </sc-if>
+        </svg>
+        <sc-if value="{{ chart.hasHover }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ chart.tooltipStyle }}">{{ chart.tooltipValue }}</div>
+        </sc-if>
+        <div style="{{ styles.chartMinLabel }}">min {{ chart.minLabel }}</div>
+        <div style="{{ styles.chartMaxLabel }}">max {{ chart.maxLabel }}</div>
+      </div>
+      <div style="{{ styles.chartDeltaRow }}">
+        <span style="{{ styles.chartDeltaLabel }}">Variazione periodo</span>
+        <span style="{{ chart.periodDeltaStyle }}">{{ chart.periodDeltaText }}</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ isPanoramica }}" hint-placeholder-val="{{ true }}">
+    <div style="{{ styles.stateWrap }}">
+      <div style="{{ styles.netWorthNote }}">Patrimonio netto = Liquidità + Investito − Passività</div>
+
+      <div style="{{ styles.rowAccounts }}">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardHeaderRow }}">
+            <div style="{{ styles.cardTitle }}">CONTI</div>
+            <div style="{{ styles.segmentRowSmall }}">
+              <sc-for list="{{ accountFilters }}" as="af" hint-placeholder-count="4">
+                <div style="{{ af.style }}" onClick="{{ af.select }}">{{ af.label }}</div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="{{ styles.accountList }}">
+            <sc-for list="{{ accounts }}" as="acc" hint-placeholder-count="4">
+              <div style="{{ acc.rowStyle }}">
+                <div style="{{ acc.iconStyle }}">{{ acc.mono }}</div>
+                <div style="{{ styles.accountInfo }}">
+                  <div style="{{ styles.accountName }}">{{ acc.name }}</div>
+                  <div style="{{ styles.accountInst }}">{{ acc.inst }}</div>
+                </div>
+                <div style="{{ styles.accountBalance }}">{{ acc.balanceLabel }}</div>
+                <div style="{{ styles.rowDeleteBtn }}" onClick="{{ acc.remove }}" title="Elimina">×</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.financeFormRow5 }}">
+            <input style="{{ styles.txInput }}" placeholder="Nome conto" value="{{ newAccountForm.name }}" onChange="{{ newAccountForm.onName }}"></input>
+            <input style="{{ styles.txInput }}" placeholder="Istituto" value="{{ newAccountForm.inst }}" onChange="{{ newAccountForm.onInst }}"></input>
+            <select style="{{ styles.txSelect }}" value="{{ newAccountForm.type }}" onChange="{{ newAccountForm.onType }}">
+              <option value="banche">Banche</option>
+              <option value="broker">Broker</option>
+              <option value="crypto">Crypto</option>
+            </select>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Saldo €" value="{{ newAccountForm.balance }}" onChange="{{ newAccountForm.onBalance }}"></input>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ newAccountForm.add }}">+</div>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">LIQUIDITÀ</div>
+          <div style="{{ styles.liqBig }}">{{ liquidity.total }}</div>
+          <svg viewBox="0 0 200 44" style="{{ styles.sparkline }}" preserveAspectRatio="none">
+            <polyline points="{{ liquidity.sparkPoints }}" fill="none" stroke-width="2.5" style="{{ styles.sparklineStroke }}"></polyline>
+          </svg>
+          <div style="{{ styles.liqSplit }}">
+            <sc-for list="{{ liquidity.split }}" as="ls" hint-placeholder-count="3">
+              <div style="{{ styles.liqSplitRow }}">
+                <div style="{{ styles.liqSplitLabel }}">{{ ls.label }}</div>
+                <div style="{{ styles.liqSplitVal }}">{{ ls.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="{{ styles.rowAccounts }}">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">INVESTITO</div>
+          <div style="{{ styles.liqBig }}">{{ invested.total }}</div>
+          <div style="{{ styles.stackedBar }}">
+            <sc-for list="{{ invested.breakdown }}" as="ib" hint-placeholder-count="5">
+              <div style="{{ ib.segStyle }}"></div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.investList }}">
+            <sc-for list="{{ invested.breakdown }}" as="ib2" hint-placeholder-count="5">
+              <div style="{{ styles.investRow }}">
+                <div style="{{ ib2.dotStyle }}"></div>
+                <div style="{{ styles.investLabel }}">{{ ib2.label }}</div>
+                <div style="{{ styles.investPct }}">{{ ib2.pctLabel }}</div>
+                <div style="{{ styles.investAmt }}">{{ ib2.amtLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">PASSIVITÀ</div>
+          <div style="{{ styles.liqBig }}">{{ liabilities.total }}</div>
+          <div style="{{ styles.liabList }}">
+            <sc-for list="{{ liabilities.items }}" as="li" hint-placeholder-count="2">
+              <div style="{{ styles.liabRow }}">
+                <div style="{{ styles.liabHead }}">
+                  <div style="{{ styles.liabName }}">{{ li.name }}</div>
+                  <div style="{{ styles.liabHeadRight }}">
+                    <div style="{{ styles.liabAmt }}">{{ li.residLabel }}</div>
+                    <div style="{{ styles.rowDeleteBtn }}" onClick="{{ li.remove }}" title="Elimina">×</div>
+                  </div>
+                </div>
+                <div style="{{ styles.liabTrack }}">
+                  <div style="{{ li.fillStyle }}"></div>
+                </div>
+                <div style="{{ styles.liabDate }}">Prossima rata: {{ li.nextDate }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.financeFormRow5 }}">
+            <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newLiabilityForm.name }}" onChange="{{ newLiabilityForm.onName }}"></input>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Importo orig. €" value="{{ newLiabilityForm.original }}" onChange="{{ newLiabilityForm.onOriginal }}"></input>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Residuo €" value="{{ newLiabilityForm.resid }}" onChange="{{ newLiabilityForm.onResid }}"></input>
+            <input style="{{ styles.txInput }}" placeholder="Prossima rata" value="{{ newLiabilityForm.nextDate }}" onChange="{{ newLiabilityForm.onNextDate }}"></input>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ newLiabilityForm.add }}">+</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="{{ styles.rowAccounts }}">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">MOVIMENTI</div>
+          <div style="{{ styles.segmentRowSmall }}">
+            <div style="{{ txForm.spesaStyle }}" onClick="{{ txForm.selectSpesa }}">Spesa</div>
+            <div style="{{ txForm.entrataStyle }}" onClick="{{ txForm.selectEntrata }}">Entrata</div>
+          </div>
+          <div style="{{ styles.txFormRow }}">
+            <input style="{{ styles.txInput }}" type="number" placeholder="Importo €" value="{{ txForm.amount }}" onChange="{{ txForm.onAmountChange }}"></input>
+            <select style="{{ styles.txSelect }}" value="{{ txForm.category }}" onChange="{{ txForm.onCategoryChange }}">
+              <sc-for list="{{ txForm.categoryOptions }}" as="co" hint-placeholder-count="4">
+                <option value="{{ co }}">{{ co }}</option>
+              </sc-for>
+            </select>
+            <select style="{{ styles.txSelect }}" value="{{ txForm.account }}" onChange="{{ txForm.onAccountChange }}">
+              <sc-for list="{{ txForm.accountOptions }}" as="ao" hint-placeholder-count="5">
+                <option value="{{ ao }}">{{ ao }}</option>
+              </sc-for>
+            </select>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ txForm.add }}">+</div>
+          </div>
+          <div style="{{ styles.txList }}">
+            <sc-for list="{{ transactions }}" as="tx" hint-placeholder-count="3">
+              <div style="{{ styles.txRow }}">
+                <div style="{{ tx.dotStyle }}"></div>
+                <div style="{{ styles.txInfo }}">
+                  <div style="{{ styles.txCategory }}">{{ tx.category }}</div>
+                  <div style="{{ styles.txMeta }}">{{ tx.account }} · {{ tx.date }}</div>
+                </div>
+                <div style="{{ tx.amountStyle }}">{{ tx.amountLabel }}</div>
+                <div style="{{ styles.rowDeleteBtn }}" onClick="{{ tx.remove }}" title="Elimina">×</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">ENTRATE E USCITE</div>
+          <div style="{{ styles.monthlySummaryRow }}">
+            <div style="{{ styles.monthlySummaryBlock }}">
+              <div style="{{ styles.monthlySummaryLabel }}">Entrate {{ currentMonthLabel }}</div>
+              <div style="{{ styles.monthlySummaryValIncome }}">{{ monthlySummary.incomeLabel }}</div>
+            </div>
+            <div style="{{ styles.monthlySummaryBlock }}">
+              <div style="{{ styles.monthlySummaryLabel }}">Uscite {{ currentMonthLabel }}</div>
+              <div style="{{ styles.monthlySummaryValExpense }}">{{ monthlySummary.expenseLabel }}</div>
+            </div>
+          </div>
+          <div style="{{ styles.monthlyChartWrap }}">
+            <sc-for list="{{ monthlyChart }}" as="mo" hint-placeholder-count="6">
+              <div style="{{ styles.monthCol }}">
+                <div style="{{ styles.monthBars }}">
+                  <div style="{{ mo.incomeBarStyle }}"></div>
+                  <div style="{{ mo.expenseBarStyle }}"></div>
+                </div>
+                <div style="{{ styles.monthLabel }}">{{ mo.month }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.monthlyLegend }}">
+            <div style="{{ styles.legendItemRow }}"><div style="{{ styles.legendDotIncome }}"></div>Entrate</div>
+            <div style="{{ styles.legendItemRow }}"><div style="{{ styles.legendDotExpense }}"></div>Uscite</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isInvestimenti }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.stateWrap }}">
+      <div style="{{ styles.rowAlloc }}">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">ALLOCAZIONE</div>
+          <div style="{{ styles.donutWrap }}">
+            <div style="{{ styles.donut }}">
+              <div style="{{ styles.donutHole }}"></div>
+            </div>
+          </div>
+          <div style="{{ styles.donutLegend }}">
+            <sc-for list="{{ allocation }}" as="al" hint-placeholder-count="5">
+              <div style="{{ styles.legendRowFull }}">
+                <div style="{{ al.dotStyle }}"></div>
+                <div style="{{ styles.legendName }}">{{ al.name }}</div>
+                <div style="{{ styles.legendPct }}">{{ al.pctLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardHeaderRow }}">
+            <div style="{{ styles.cardTitle }}">ASSET</div>
+          </div>
+          <div style="{{ styles.assetHeaderRow }}">
+            <div style="{{ styles.assetColAsset }}">Asset</div>
+            <div style="{{ styles.assetColNum }}">Qtà</div>
+            <div style="{{ styles.assetColNum }}">Prezzo medio</div>
+            <div style="{{ styles.assetColNum }}">Prezzo</div>
+            <div style="{{ styles.assetColNum }}">Valore</div>
+            <div style="{{ assetSort.h24.style }}" onClick="{{ assetSort.h24.click }}">24h</div>
+            <div style="{{ assetSort.h7.style }}" onClick="{{ assetSort.h7.click }}">7g</div>
+            <div style="{{ assetSort.h30.style }}" onClick="{{ assetSort.h30.click }}">30g</div>
+            <div style="{{ assetSort.h1a.style }}" onClick="{{ assetSort.h1a.click }}">1a</div>
+            <div></div>
+          </div>
+          <div style="{{ styles.assetList }}">
+            <sc-for list="{{ assets }}" as="a" hint-placeholder-count="5">
+              <div style="{{ styles.assetRow }}">
+                <div style="{{ a.nameCellStyle }}" onClick="{{ a.toggleDetail }}" title="Tocca per i singoli acquisti">
+                  <div style="{{ a.logoStyle }}">{{ a.mono }}</div>
+                  <div>
+                    <div style="{{ styles.assetName }}">{{ a.name }}</div>
+                    <div style="{{ styles.assetSymbol }}">{{ a.symbol }}</div>
+                  </div>
+                </div>
+                <div style="{{ styles.assetColNum }}">{{ a.qty }}</div>
+                <div style="{{ styles.assetColNum }}">{{ a.avgLabel }}</div>
+                <div style="{{ styles.assetColNum }}">{{ a.priceLabel }}</div>
+                <div style="{{ styles.assetColNum }}">{{ a.valueLabel }}</div>
+                <div style="{{ a.d24.chip }}">{{ a.d24.text }}</div>
+                <div style="{{ a.d7.chip }}">{{ a.d7.text }}</div>
+                <div style="{{ a.d30.chip }}">{{ a.d30.text }}</div>
+                <div style="{{ a.d1a.chip }}">{{ a.d1a.text }}</div>
+                <svg viewBox="0 0 60 24" style="{{ styles.rowSpark }}" preserveAspectRatio="none">
+                  <polyline points="{{ a.sparkPoints }}" fill="none" stroke-width="2" style="{{ a.sparkStroke }}"></polyline>
+                </svg>
+                <div style="{{ styles.rowDeleteBtn }}" onClick="{{ a.remove }}" title="Elimina">×</div>
+              </div>
+              <sc-if value="{{ a.isOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ styles.lotsPanel }}">
+                  <div style="{{ styles.lotsHeaderRow }}">
+                    <div style="{{ styles.lotsColLabel }}">{{ a.detailCount }}</div>
+                  </div>
+                  <sc-for list="{{ a.lots }}" as="lot" hint-placeholder-count="2">
+                    <div style="{{ styles.lotRow }}">
+                      <div style="{{ styles.lotDate }}">{{ lot.dateLabel }}</div>
+                      <div style="{{ styles.lotQty }}">{{ lot.qty }}</div>
+                      <div style="{{ styles.lotPrice }}">{{ lot.priceLabel }}</div>
+                      <div style="{{ lot.gain }}">{{ lot.gainLabel }}</div>
+                      <div style="{{ styles.rowDeleteBtn }}" onClick="{{ lot.remove }}" title="Elimina questo acquisto">×</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+          <div style="{{ styles.financeFormRow6 }}">
+            <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newAssetForm.name }}" onChange="{{ newAssetForm.onName }}"></input>
+            <input style="{{ styles.txInput }}" placeholder="Simbolo (es. BTC, AAPL)" value="{{ newAssetForm.symbol }}" onChange="{{ newAssetForm.onSymbol }}"></input>
+            <select style="{{ styles.txSelect }}" value="{{ newAssetForm.assetClass }}" onChange="{{ newAssetForm.onAssetClass }}">
+              <option value="crypto">Crypto</option>
+              <option value="azione">Azione</option>
+              <option value="etf">ETF</option>
+            </select>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Quantità" value="{{ newAssetForm.qty }}" onChange="{{ newAssetForm.onQty }}"></input>
+            <input style="{{ styles.txInput }}" type="datetime-local" placeholder="Data acquisto" value="{{ newAssetForm.purchaseDate }}" onChange="{{ newAssetForm.onPurchaseDate }}"></input>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ newAssetForm.add }}">+</div>
+          </div>
+          <sc-if value="{{ newAssetForm.hasError }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.financeFormError }}">{{ newAssetForm.error }}</div>
+          </sc-if>
+          <div style="{{ styles.financeFormHint }}">Prezzo attuale e prezzo medio (al momento dell'acquisto) vengono recuperati automaticamente — lascia vuota la data se non la conosci, verrà usato il prezzo di oggi per entrambi.</div>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">ACQUISTI RICORRENTI</div>
+        </div>
+        <div style="{{ styles.recurringList }}">
+          <sc-for list="{{ recurringBuys }}" as="rb" hint-placeholder-count="2">
+            <div style="{{ styles.recurringRow }}">
+              <div style="{{ rb.dotStyle }}"></div>
+              <div style="{{ styles.recurringInfo }}">
+                <div style="{{ styles.recurringName }}">{{ rb.name }} — {{ rb.symbol }}</div>
+                <div style="{{ styles.recurringMeta }}">{{ rb.amountLabel }} · {{ rb.frequencyLabel }} · prossimo: {{ rb.nextRunLabel }}</div>
+              </div>
+              <div style="{{ rb.toggleStyle }}" onClick="{{ rb.toggleActive }}">{{ rb.toggleLabel }}</div>
+              <div style="{{ styles.rowDeleteBtn }}" onClick="{{ rb.remove }}" title="Elimina">×</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.financeFormRow6 }}">
+          <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newRecurringForm.name }}" onChange="{{ newRecurringForm.onName }}"></input>
+          <input style="{{ styles.txInput }}" placeholder="Simbolo" value="{{ newRecurringForm.symbol }}" onChange="{{ newRecurringForm.onSymbol }}"></input>
+          <select style="{{ styles.txSelect }}" value="{{ newRecurringForm.assetClass }}" onChange="{{ newRecurringForm.onAssetClass }}">
+            <option value="crypto">Crypto</option>
+            <option value="azione">Azione</option>
+            <option value="etf">ETF</option>
+          </select>
+          <input style="{{ styles.txInput }}" type="number" placeholder="Importo € a esecuzione" value="{{ newRecurringForm.amountEur }}" onChange="{{ newRecurringForm.onAmountEur }}"></input>
+          <select style="{{ styles.txSelect }}" value="{{ newRecurringForm.frequency }}" onChange="{{ newRecurringForm.onFrequency }}">
+            <option value="weekly">Ogni settimana</option>
+            <option value="monthly">Ogni mese</option>
+          </select>
+          <div style="{{ styles.txAddBtn }}" onClick="{{ newRecurringForm.add }}">+</div>
+        </div>
+        <sc-if value="{{ newRecurringForm.hasError }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.financeFormError }}">{{ newRecurringForm.error }}</div>
+        </sc-if>
+        <div style="{{ styles.financeFormHint }}">Parte da oggi e si ripete da sola — nessuna azione richiesta dopo averlo creato. Comprando lo stesso simbolo già in portafoglio si somma alla posizione esistente con un nuovo prezzo medio.</div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardHeaderRow }}">
+          <div style="{{ styles.cardTitle }}">ANDAMENTI</div>
+          <div style="{{ styles.segmentRowSmall }}">
+            <sc-for list="{{ investPeriods }}" as="ip" hint-placeholder-count="5">
+              <div style="{{ ip.style }}" onClick="{{ ip.select }}">{{ ip.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="{{ styles.multiLegend }}">
+          <sc-for list="{{ multiChart.legend }}" as="ml" hint-placeholder-count="3">
+            <div style="{{ styles.legendItemRow }}">
+              <div style="{{ ml.dotStyle }}"></div>
+              <div style="{{ styles.legendName }}">{{ ml.name }}</div>
+              <div style="{{ ml.deltaStyle }}">{{ ml.deltaLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.multiChartWrap }}" onMouseMove="{{ multiChart.onMove }}" onMouseLeave="{{ multiChart.onLeave }}">
+          <svg viewBox="0 0 1000 220" style="{{ styles.multiChartSvg }}" preserveAspectRatio="none">
+            <sc-for list="{{ multiChart.paths }}" as="mp" hint-placeholder-count="3">
+              <path d="{{ mp.d }}" fill="none" stroke-width="2.5" style="{{ mp.style }}"></path>
+            </sc-for>
+            <sc-if value="{{ multiChart.hasHover }}" hint-placeholder-val="{{ false }}">
+              <line x1="{{ multiChart.hoverX }}" y1="0" x2="{{ multiChart.hoverX }}" y2="220" style="{{ styles.multiHoverLine }}"></line>
+              <sc-for list="{{ multiChart.hoverRows }}" as="hr" hint-placeholder-count="3">
+                <circle cx="{{ hr.cx }}" cy="{{ hr.cy }}" r="4" style="{{ hr.svgDotStyle }}"></circle>
+              </sc-for>
+            </sc-if>
+          </svg>
+          <div style="{{ styles.multiMinLabel }}">{{ multiChart.minLabel }}</div>
+          <div style="{{ styles.multiMaxLabel }}">{{ multiChart.maxLabel }}</div>
+          <sc-if value="{{ multiChart.hasHover }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ multiChart.tooltipStyle }}">
+              <div style="{{ styles.multiTooltipDate }}">{{ multiChart.hoverDateLabel }}</div>
+              <sc-for list="{{ multiChart.hoverRows }}" as="hr" hint-placeholder-count="3">
+                <div style="{{ styles.multiTooltipRow }}">
+                  <div style="{{ hr.dotStyle }}"></div>
+                  <div style="{{ styles.multiTooltipName }}">{{ hr.name }}</div>
+                  <div style="{{ hr.valueStyle }}">{{ hr.valueLabel }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div style="{{ styles.multiAxisRow }}">
+          <span>{{ multiChart.startLabel }}</span>
+          <span>{{ multiChart.endLabel }}</span>
+        </div>
+        <div style="{{ styles.bestWorstRow }}">
+          <div style="{{ styles.bestWorstCard }}">
+            <div style="{{ styles.bestWorstLabel }}">MIGLIORE</div>
+            <div style="{{ styles.bestWorstName }}">{{ multiChart.best.name }}</div>
+            <div style="{{ multiChart.best.deltaStyle }}">{{ multiChart.best.deltaLabel }}</div>
+          </div>
+          <div style="{{ styles.bestWorstCard }}">
+            <div style="{{ styles.bestWorstLabel }}">PEGGIORE</div>
+            <div style="{{ styles.bestWorstName }}">{{ multiChart.worst.name }}</div>
+            <div style="{{ multiChart.worst.deltaStyle }}">{{ multiChart.worst.deltaLabel }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+
+  <sc-if value="{{ isInvestimenti }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.aiInsightWrap }}">
+      <div style="{{ styles.aiInsightCard }}">
+        <div style="{{ styles.aiInsightIcon }}">✦</div>
+        <div style="{{ styles.aiInsightText }}">
+          {{ aiInsight.summary }}
+          <sc-if value="{{ aiInsight.expanded }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.aiInsightExtra }}">{{ aiInsight.extra }}</div>
+          </sc-if>
+        </div>
+        <div style="{{ styles.aiInsightExpand }}" onClick="{{ aiInsight.toggle }}">{{ aiInsight.toggleLabel }}</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="{{ styles.chatBarWrap }}">
+    <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
+    </sc-if>
+    <div style="{{ styles.chatSuggestions }}">
+      <sc-for list="{{ chatSuggestions }}" as="cs" hint-placeholder-count="3">
+        <div style="{{ styles.chatChip }}" onClick="{{ cs.select }}">{{ cs.label }}</div>
+      </sc-for>
+    </div>
+    <div style="{{ styles.chatBar }}">
+      <div style="{{ chatBar.iconStyle }}">✦</div>
+      <input style="{{ styles.chatInput }}" placeholder="{{ chatBar.placeholder }}" value="{{ chatText }}" onChange="{{ onChatChange }}" onKeyDown="{{ onChatKeyDown }}"></input>
+      <div style="{{ styles.chatMic }}">🎙</div>
+      <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+function tok(theme) {
+  const dark = theme === 'dark';
+  return {
+    dark,
+    bg: dark ? 'oklch(15% 0.03 280)' : 'oklch(97% 0.006 280)',
+    text1: dark ? 'oklch(97% 0.01 280)' : 'oklch(22% 0.02 280)',
+    text2: dark ? 'oklch(75% 0.02 280)' : 'oklch(46% 0.02 280)',
+    text3: dark ? 'oklch(58% 0.02 280)' : 'oklch(58% 0.02 280)',
+    glassBg: dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.55)',
+    glassBgSoft: dark ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.4)',
+    glassBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)',
+    trackBg: dark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)',
+    accent: dark ? 'oklch(68% 0.20 235)' : 'oklch(55% 0.22 235)',
+    accentSoft: dark ? 'oklch(68% 0.20 235 / 0.18)' : 'oklch(55% 0.22 235 / 0.14)',
+    green: dark ? 'oklch(74% 0.17 150)' : 'oklch(50% 0.16 150)',
+    greenSoft: dark ? 'oklch(74% 0.17 150 / 0.15)' : 'oklch(50% 0.16 150 / 0.1)',
+    red: dark ? 'oklch(68% 0.19 25)' : 'oklch(55% 0.20 25)',
+    redSoft: dark ? 'oklch(68% 0.19 25 / 0.15)' : 'oklch(55% 0.20 25 / 0.1)',
+    amber: dark ? 'oklch(72% 0.16 60)' : 'oklch(58% 0.16 60)',
+    teal: dark ? 'oklch(70% 0.13 190)' : 'oklch(52% 0.12 190)',
+    violet: dark ? 'oklch(66% 0.19 300)' : 'oklch(52% 0.20 300)',
+    gray: dark ? 'oklch(60% 0.01 280)' : 'oklch(55% 0.01 280)',
+    shadow: dark ? '0 20px 50px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' : '0 20px 40px -14px rgba(60,50,100,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+  };
+}
+
+function fmtEur(v) { return '€ ' + Math.round(v).toLocaleString('it-IT'); }
+function fmtPct(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
+// Crypto keeps up to 8 decimals (a BTC qty like 0.00334232 is meaningful at
+// that precision); shares/ETF units are rounded to 4. Either way this also
+// absorbs the floating-point noise from summing lots (0.157 + 2.22 comes
+// back as 2.3770000000000002, not 2.377) that was showing up raw before.
+function fmtQty(v, assetClass) {
+  return (Number(v) || 0).toLocaleString('it-IT', { maximumFractionDigits: assetClass === 'crypto' ? 8 : 4 });
+}
+
+function areaChart(data, color, hoverIndex) {
+  const n = data.length;
+  const max = Math.max(...data), min = Math.min(...data);
+  const pad = 20;
+  const pts = data.map((v, i) => ({
+    x: (i / (n - 1)) * 1000,
+    y: 220 - ((v - min) / (max - min || 1)) * (220 - pad * 2) - pad,
+    v,
+  }));
+  const linePath = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const areaPath = linePath + ` L${pts[n - 1].x.toFixed(1)},240 L0,240 Z`;
+  const minIdx = data.indexOf(min), maxIdx = data.indexOf(max);
+  const hover = (hoverIndex != null && hoverIndex >= 0 && hoverIndex < n) ? pts[hoverIndex] : null;
+  return {
+    linePath, areaPath, gradColor: color,
+    minPt: pts[minIdx], maxPt: pts[maxIdx],
+    minLabel: fmtEur(min), maxLabel: fmtEur(max),
+    hasHover: !!hover, hoverPt: hover || { x: 0, y: 0 },
+    hoverValue: hover ? fmtEur(hover.v) : '',
+    periodDelta: data[n - 1] - data[0],
+    periodDeltaPct: data[0] ? ((data[n - 1] - data[0]) / data[0]) * 100 : 0,
+  };
+}
+
+class Component extends DCLogic {
+  state = {
+    theme: (window.LifeOSJarvis && window.LifeOSJarvis.getTheme) ? window.LifeOSJarvis.getTheme() : 'dark',
+    now: new Date(),
+    activeTab: 'panoramica',
+    chartPeriod: '30g',
+    hoverIndex: null,
+    accountFilter: 'tutti',
+    investPeriod: '30G',
+    multiHoverFrac: null,
+    sortKey: 'value',
+    sortDir: 'desc',
+    aiInsightExpanded: false,
+    chatText: '',
+    lastReply: null,
+    transactions: [], // real only — see componentDidMount; no more fictional seed rows
+    txType: 'spesa',
+    txAmount: '',
+    txCategory: 'Alimentari',
+    txAccount: 'Conto corrente',
+
+    // Real, empty by default — see lifeos-store.mjs. Replaces what used to
+    // be fictional hardcoded banks/holdings/loans baked into this file.
+    accounts: [], liabilities: [], assets: [],
+    newAccount: { name: '', inst: '', type: 'banche', balance: '' },
+    newLiability: { name: '', original: '', resid: '', nextDate: '' },
+    newAsset: { name: '', symbol: '', assetClass: 'crypto', qty: '', purchaseDate: '' },
+    newAssetError: null,
+    realTransactions: [],
+    recurringBuys: [],
+    newRecurring: { name: '', symbol: '', assetClass: 'crypto', amountEur: '', frequency: 'monthly' },
+    newRecurringError: null,
+    expandedAssetId: null,
+    marketPulse: {},
+  };
+
+  componentDidMount() {
+    this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    window.LifeOSJarvis.fetchData().then(data => {
+      const patch = {
+        accounts: data.accounts || [], liabilities: data.liabilities || [], assets: data.assets || [],
+        recurringBuys: data.recurringBuys || [],
+        marketPulse: data.marketPulse || {},
+        transactions: (data.transactions || []).map(r => ({
+          id: r.id, type: r.type, amount: r.amount, category: r.category, account: r.account || 'Assistente IA',
+          date: new Date(r.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
+        })).reverse(),
+        realTransactions: data.transactions || [],
+      };
+      this.setState(patch);
+    }).catch(() => {});
+  }
+  componentWillUnmount() { clearInterval(this._timer); }
+
+  setNewAccountField = (field, v) => this.setState(s => ({ newAccount: { ...s.newAccount, [field]: v } }));
+  addAccountRow = () => {
+    const { name, inst, type, balance } = this.state.newAccount;
+    if (!name.trim()) return;
+    window.LifeOSJarvis.financeOp('accounts', 'add', { data: { name, inst, type, balance: parseFloat(balance) || 0 } })
+      .then(record => this.setState(s => ({ accounts: [...s.accounts, record], newAccount: { name: '', inst: '', type: 'banche', balance: '' } })))
+      .catch(() => {});
+  };
+  removeAccountRow = (id) => {
+    window.LifeOSJarvis.financeOp('accounts', 'remove', { id }).catch(() => {});
+    this.setState(s => ({ accounts: s.accounts.filter(a => a.id !== id) }));
+  };
+
+  setNewLiabilityField = (field, v) => this.setState(s => ({ newLiability: { ...s.newLiability, [field]: v } }));
+  addLiabilityRow = () => {
+    const { name, original, resid, nextDate } = this.state.newLiability;
+    if (!name.trim()) return;
+    window.LifeOSJarvis.financeOp('liabilities', 'add', { data: { name, original: parseFloat(original) || 0, resid: parseFloat(resid) || 0, nextDate } })
+      .then(record => this.setState(s => ({ liabilities: [...s.liabilities, record], newLiability: { name: '', original: '', resid: '', nextDate: '' } })))
+      .catch(() => {});
+  };
+  removeLiabilityRow = (id) => {
+    window.LifeOSJarvis.financeOp('liabilities', 'remove', { id }).catch(() => {});
+    this.setState(s => ({ liabilities: s.liabilities.filter(l => l.id !== id) }));
+  };
+
+  setNewAssetField = (field, v) => this.setState(s => ({ newAsset: { ...s.newAsset, [field]: v }, newAssetError: null }));
+  addAssetRow = () => {
+    const { name, symbol, assetClass, qty, purchaseDate } = this.state.newAsset;
+    if (!name.trim() || !symbol.trim()) return;
+    // No price typed in at all — the server resolves both the current price
+    // and, from purchaseDate, the real historical cost basis (see
+    // market-prices.mjs). A bare datetime-local value has no zone marker,
+    // so the browser's own Date() parse (local time) is exactly right here.
+    const purchaseDateIso = purchaseDate ? new Date(purchaseDate).toISOString() : null;
+    window.LifeOSJarvis.financeOp('assets', 'add', { data: { name, symbol, assetClass, qty: parseFloat(qty) || 0, purchaseDateIso } })
+      .then(record => this.setState(s => ({
+        // Buying more of a symbol already held merges into its existing row
+        // server-side (same id) rather than creating a second one — replace
+        // it in place instead of appending, or it'd show up twice.
+        assets: s.assets.some(a => a.id === record.id)
+          ? s.assets.map(a => a.id === record.id ? record : a)
+          : [...s.assets, record],
+        newAsset: { name: '', symbol: '', assetClass: 'crypto', qty: '', purchaseDate: '' },
+      })))
+      .catch(err => this.setState({ newAssetError: err.message }));
+  };
+  removeAssetRow = (id) => {
+    window.LifeOSJarvis.financeOp('assets', 'remove', { id }).catch(() => {});
+    this.setState(s => ({ assets: s.assets.filter(a => a.id !== id) }));
+  };
+  toggleAssetDetail = (id) => this.setState(s => ({ expandedAssetId: s.expandedAssetId === id ? null : id }));
+  removeAssetLotRow = (assetId, lotId) => {
+    window.LifeOSJarvis.financeOp('assets', 'removeLot', { id: assetId, lotId }).catch(() => {});
+    this.setState(s => ({
+      assets: s.assets.flatMap(a => {
+        if (a.id !== assetId) return [a];
+        const lots = a.lots.filter(l => l.id !== lotId);
+        if (!lots.length) return []; // the whole position goes with its last lot
+        const qty = lots.reduce((sum, l) => sum + l.qty, 0);
+        const avg = qty ? lots.reduce((sum, l) => sum + l.qty * l.price, 0) / qty : 0;
+        return [{ ...a, lots, qty, avg }];
+      }),
+    }));
+  };
+
+  setNewRecurringField = (field, v) => this.setState(s => ({ newRecurring: { ...s.newRecurring, [field]: v }, newRecurringError: null }));
+  addRecurringBuyRow = () => {
+    const { name, symbol, assetClass, amountEur, frequency } = this.state.newRecurring;
+    if (!name.trim() || !symbol.trim() || !(parseFloat(amountEur) > 0)) return;
+    window.LifeOSJarvis.financeOp('recurringBuys', 'add', {
+      data: { name, symbol, assetClass, amountEur: parseFloat(amountEur) || 0, frequency, nextRunIso: new Date().toISOString() },
+    })
+      .then(record => this.setState(s => ({
+        recurringBuys: [...s.recurringBuys, record],
+        newRecurring: { name: '', symbol: '', assetClass: 'crypto', amountEur: '', frequency: 'monthly' },
+      })))
+      .catch(err => this.setState({ newRecurringError: err.message }));
+  };
+  removeRecurringBuyRow = (id) => {
+    window.LifeOSJarvis.financeOp('recurringBuys', 'remove', { id }).catch(() => {});
+    this.setState(s => ({ recurringBuys: s.recurringBuys.filter(rb => rb.id !== id) }));
+  };
+  toggleRecurringBuyActive = (rb) => {
+    const active = !rb.active;
+    window.LifeOSJarvis.financeOp('recurringBuys', 'update', { id: rb.id, data: { active } }).catch(() => {});
+    this.setState(s => ({ recurringBuys: s.recurringBuys.map(x => x.id === rb.id ? { ...x, active } : x) }));
+  };
+
+  toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
+  selectTab = (tab) => this.setState({ activeTab: tab, hoverIndex: null });
+  selectChartPeriod = (p) => this.setState({ chartPeriod: p, hoverIndex: null });
+  selectAccountFilter = (f) => this.setState({ accountFilter: f });
+  selectInvestPeriod = (p) => this.setState({ investPeriod: p });
+  toggleSort = (key) => this.setState(s => ({ sortKey: key, sortDir: s.sortKey === key && s.sortDir === 'desc' ? 'asc' : 'desc' }));
+  toggleAiInsight = () => this.setState(s => ({ aiInsightExpanded: !s.aiInsightExpanded }));
+  onChartMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const n = this.state.chartPeriod === '30g' ? 11 : 12;
+    this.setState({ hoverIndex: Math.round(frac * (n - 1)) });
+  };
+  onChartLeave = () => this.setState({ hoverIndex: null });
+  onMultiChartMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    this.setState({ multiHoverFrac: frac });
+  };
+  onMultiChartLeave = () => this.setState({ multiHoverFrac: null });
+  onChatSubmit = () => {
+    const text = this.state.chatText.trim();
+    if (!text) return;
+    this.setState({ chatText: '', lastReply: null });
+    const section = this.state.activeTab === 'investimenti' ? 'investimenti' : 'finanze';
+    window.LifeOSJarvis.ask(text, null, section).then(reply => {
+      this.setState(s => ({
+        lastReply: reply.text || '...',
+        transactions: reply.action === 'add_transaction' && reply.data
+          ? [{
+              id: reply.data.id, type: reply.data.type, amount: reply.data.amount, category: reply.data.category,
+              account: 'Assistente IA', date: new Date(reply.data.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
+            }, ...s.transactions]
+          : s.transactions,
+      }));
+    }).catch(err => {
+      this.setState({ lastReply: 'Non riesco a rispondere: ' + err.message });
+    });
+  };
+
+  spesaCategories = ['Alimentari', 'Trasporti', 'Casa', 'Svago', 'Salute', 'Shopping', 'Altro'];
+  entrataCategories = ['Stipendio', 'Freelance', 'Regalo', 'Altro'];
+  accountNames = ['Conto corrente', 'Conto risparmio', 'Carta di credito', 'Broker', 'Wallet crypto'];
+
+  setTxType = (type) => this.setState({ txType: type, txCategory: (type === 'spesa' ? this.spesaCategories : this.entrataCategories)[0] });
+  setTxAmount = (v) => this.setState({ txAmount: v });
+  setTxCategory = (v) => this.setState({ txCategory: v });
+  setTxAccount = (v) => this.setState({ txAccount: v });
+  addTransaction = () => {
+    const amount = parseFloat(this.state.txAmount);
+    if (!amount || amount <= 0) return;
+    const { txType, txCategory, txAccount } = this.state;
+    window.LifeOSJarvis.financeOp('transactions', 'add', { data: { tx_type: txType, amount, category: txCategory, account: txAccount } })
+      .then(record => this.setState(s => ({
+        transactions: [{
+          id: record.id, type: record.type, amount: record.amount, category: record.category, account: record.account || txAccount,
+          date: new Date(record.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
+        }, ...s.transactions],
+        realTransactions: [...s.realTransactions, record],
+        txAmount: '',
+      })))
+      .catch(() => {});
+  };
+  removeTransactionRow = (id) => {
+    window.LifeOSJarvis.financeOp('transactions', 'remove', { id }).catch(() => {});
+    this.setState(s => ({
+      transactions: s.transactions.filter(tx => tx.id !== id),
+      realTransactions: s.realTransactions.filter(tx => tx.id !== id),
+    }));
+  };
+
+  renderVals() {
+    const s = this.state;
+    const t = tok(s.theme);
+    const dark = t.dark;
+    const glass = {
+      background: t.glassBg, backdropFilter: 'blur(30px) saturate(180%)', WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+      border: `1px solid ${t.glassBorder}`, boxShadow: t.shadow,
+    };
+    const card = { ...glass, borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, color: t.text1, boxSizing: 'border-box' };
+    const isPanoramica = s.activeTab === 'panoramica';
+    const isInvestimenti = s.activeTab === 'investimenti';
+
+    const chip = (price, changePct) => {
+      const positive = changePct >= 0;
+      return {
+        chipStyle: { display: 'flex', alignItems: 'center', gap: 4, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 8, padding: '7px 12px' },
+        price, change: fmtPct(changePct),
+        arrowStyle: { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: positive ? `5px solid ${t.green}` : 'none', borderTop: positive ? 'none' : `5px solid ${t.red}`, display: 'inline-block' },
+        deltaStyle: { fontSize: 12.5, fontWeight: 700, color: positive ? t.green : t.red },
+      };
+    };
+    // Real market pulse (see marketPulse in server.mjs's /api/lifeos-data) —
+    // not tied to what's actually held, just BTC/EUNL as a fixed reference
+    // point. "—" only while the very first fetch hasn't landed yet.
+    const pulseEur = (v, decimals) => '€ ' + v.toFixed(decimals).replace('.', ',');
+    const btc = s.marketPulse.btc ? chip(pulseEur(s.marketPulse.btc.price, 0), s.marketPulse.btc.d24) : chip('—', 0);
+    const eunl = s.marketPulse.eunl ? chip(pulseEur(s.marketPulse.eunl.price, 2), s.marketPulse.eunl.d24) : chip('—', 0);
+
+    const timeStr = s.now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = s.now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, c => c.toUpperCase());
+
+    const styles = {
+      page: { position: 'relative', minHeight: '100vh', width: '100%', overflow: 'hidden', background: t.bg, transition: 'background 0.4s ease' },
+      blobA: { position: 'fixed', top: '-10%', left: '5%', width: 640, height: 640, borderRadius: '50%', background: dark ? 'oklch(55% 0.20 300)' : 'oklch(88% 0.07 300)', filter: 'blur(120px)', opacity: 0.55, animation: 'blobDrift1 26s ease-in-out infinite' },
+      blobB: { position: 'fixed', top: '20%', right: '0%', width: 560, height: 560, borderRadius: '50%', background: dark ? 'oklch(55% 0.15 200)' : 'oklch(90% 0.06 195)', filter: 'blur(120px)', opacity: 0.5, animation: 'blobDrift2 30s ease-in-out infinite' },
+      blobC: { position: 'fixed', bottom: '-15%', left: '30%', width: 620, height: 620, borderRadius: '50%', background: dark ? 'oklch(48% 0.18 265)' : 'oklch(90% 0.05 340)', filter: 'blur(130px)', opacity: 0.45, animation: 'blobDrift3 34s ease-in-out infinite' },
+      container: { position: 'relative', zIndex: 1, maxWidth: 1440, margin: '0 auto', padding: '0 32px 140px', display: 'flex', flexDirection: 'column', gap: 24 },
+      navWrap: { position: 'relative', zIndex: 1, width: '100%', marginBottom: 24 },
+      navbar: { ...glass, borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', width: '100%', boxSizing: 'border-box', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: t.text1 },
+      navLeft: { display: 'flex', alignItems: 'center', gap: 32 },
+      logo: { fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em', color: t.text1 },
+      tabRow: { display: 'flex', alignItems: 'center', gap: 6 },
+      tabLink: { display: 'flex' },
+      tab: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 500, color: t.text2, cursor: 'pointer' },
+      tabActive: { padding: '8px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600, color: t.text1, background: t.accentSoft, cursor: 'pointer' },
+      navRight: { display: 'flex', alignItems: 'center', gap: 12 },
+      themeSwitch: { width: 42, height: 24, borderRadius: 8, background: t.trackBg, border: `1px solid ${t.glassBorder}`, position: 'relative', cursor: 'pointer', flexShrink: 0 },
+      themeKnob: { position: 'absolute', top: 2, left: dark ? 2 : 20, width: 18, height: 18, borderRadius: 5, background: t.accent, transition: 'left 0.25s ease' },
+      chipLabel: { fontSize: 11, fontWeight: 700, color: t.text3, marginRight: 2 },
+      chipPrice: { fontSize: 13, fontWeight: 700, color: t.text1, marginRight: 4 },
+      clockBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 6 },
+      clockTime: { fontSize: 14, fontWeight: 700, color: t.text1 },
+      clockDate: { fontSize: 12, color: t.text2, marginTop: 2 },
+      navAvatarLink: { display: 'flex' },
+      navAvatar: { width: 34, height: 34, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, cursor: 'pointer' },
+
+      toggleRow: { display: 'flex', justifyContent: 'flex-end' },
+      segToggle: { display: 'flex', gap: 4, background: t.trackBg, borderRadius: 999, padding: 4, ...glass, borderRadius: 999 },
+      card,
+      cardLabel: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+      cardTitle: { fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: t.text3, textTransform: 'uppercase' },
+      cardHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
+
+      heroTop: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 },
+      heroBig: { fontSize: 52, fontWeight: 800, color: t.text1, marginTop: 8, letterSpacing: '-0.02em' },
+      heroUpdated: { fontSize: 12, color: t.text3, marginTop: 6 },
+
+      chartHeaderRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+      segmentRowSmall: { display: 'flex', gap: 4, background: t.trackBg, borderRadius: 8, padding: 3 },
+      chartWrap: { position: 'relative', width: '100%', height: 240 },
+      chartSvg: { width: '100%', height: '100%', display: 'block', cursor: 'crosshair' },
+      chartStroke: { stroke: t.accent },
+      chartMarkerMin: { fill: t.bg, stroke: t.text3, strokeWidth: 1.5 },
+      chartMarkerMax: { fill: t.bg, stroke: t.accent, strokeWidth: 1.5 },
+      chartHoverLine: { stroke: t.glassBorder, strokeWidth: 1 },
+      chartHoverDot: { fill: t.accent, stroke: t.bg, strokeWidth: 2 },
+      chartMinLabel: { position: 'absolute', left: 0, bottom: 0, fontSize: 11, color: t.text3 },
+      chartMaxLabel: { position: 'absolute', left: 0, top: 0, fontSize: 11, color: t.text3 },
+      chartDeltaRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
+      chartDeltaLabel: { fontSize: 12.5, color: t.text2 },
+
+      stateWrap: { display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.45s ease' },
+      netWorthNote: { fontSize: 12.5, color: t.text3, textAlign: 'right', marginTop: -8 },
+      rowAccounts: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 },
+      rowAlloc: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 },
+
+      accountList: { display: 'flex', flexDirection: 'column', gap: 4 },
+      accountInfo: { flex: 1 },
+      accountName: { fontSize: 14, fontWeight: 600, color: t.text1 },
+      accountInst: { fontSize: 12, color: t.text3, marginTop: 2 },
+      accountBalance: { fontSize: 15, fontWeight: 700, color: t.text1 },
+
+      liqBig: { fontSize: 32, fontWeight: 800, color: t.text1, letterSpacing: '-0.01em' },
+      sparkline: { width: '100%', height: 44 },
+      sparklineStroke: { stroke: t.accent },
+      liqSplit: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 },
+      liqSplitRow: { display: 'flex', justifyContent: 'space-between', fontSize: 13 },
+      liqSplitLabel: { color: t.text2 },
+      liqSplitVal: { color: t.text1, fontWeight: 600 },
+
+      stackedBar: { display: 'flex', height: 12, borderRadius: 999, overflow: 'hidden', gap: 2 },
+      investList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
+      investRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderTop: `1px solid ${t.glassBorder}` },
+      investLabel: { flex: 1, fontSize: 13.5, color: t.text1 },
+      investPct: { fontSize: 12.5, color: t.text3, width: 44, textAlign: 'right' },
+      investAmt: { fontSize: 13.5, fontWeight: 700, color: t.text1, width: 90, textAlign: 'right' },
+
+      liabList: { display: 'flex', flexDirection: 'column', gap: 16, marginTop: 4 },
+      liabRow: { display: 'flex', flexDirection: 'column', gap: 8 },
+      liabHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+      liabHeadRight: { display: 'flex', alignItems: 'center', gap: 6 },
+      liabName: { fontSize: 14, fontWeight: 600, color: t.text1 },
+      liabAmt: { fontSize: 14, fontWeight: 700, color: t.text1 },
+      liabTrack: { height: 7, borderRadius: 999, background: t.trackBg, overflow: 'hidden' },
+      liabDate: { fontSize: 12, color: t.text3 },
+
+      donutWrap: { display: 'flex', justifyContent: 'center', padding: '8px 0' },
+      donut: { width: 180, height: 180, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' },
+      donutHole: { width: '62%', height: '62%', borderRadius: '50%', background: t.bg },
+      donutLegend: { display: 'flex', flexDirection: 'column', gap: 10 },
+      legendRowFull: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 },
+      legendName: { flex: 1, color: t.text1 },
+      legendPct: { color: t.text2, fontWeight: 600 },
+
+      assetHeaderRow: { display: 'grid', gridTemplateColumns: '1.6fr 0.7fr 0.9fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr 26px', gap: 8, padding: '0 4px', fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.04em' },
+      assetColAsset: {},
+      assetColNum: { textAlign: 'right', fontSize: 13, color: t.text2 },
+      assetList: { display: 'flex', flexDirection: 'column' },
+      assetRow: { display: 'grid', gridTemplateColumns: '1.6fr 0.7fr 0.9fr 0.9fr 0.9fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr 26px', gap: 8, alignItems: 'center', padding: '12px 4px', borderTop: `1px solid ${t.glassBorder}` },
+      assetNameCell: { display: 'flex', alignItems: 'center', gap: 10 },
+      lotsPanel: { background: t.glassBgSoft, borderRadius: 10, padding: '8px 12px', margin: '2px 4px 8px' },
+      lotsHeaderRow: { padding: '4px 0' },
+      lotsColLabel: { fontSize: 11, fontWeight: 700, color: t.text3, textTransform: 'uppercase', letterSpacing: '0.04em' },
+      lotRow: { display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 0.8fr 26px', gap: 8, alignItems: 'center', padding: '7px 0', borderTop: `1px solid ${t.glassBorder}`, fontSize: 12.5 },
+      lotDate: { color: t.text2 },
+      lotQty: { color: t.text1, textAlign: 'right' },
+      lotPrice: { color: t.text1, textAlign: 'right' },
+      assetName: { fontSize: 13.5, fontWeight: 600, color: t.text1 },
+      assetSymbol: { fontSize: 11.5, color: t.text3 },
+      rowSpark: { width: '100%', height: 24 },
+
+      multiLegend: { display: 'flex', gap: 20, flexWrap: 'wrap' },
+      legendItemRow: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 },
+      multiChartWrap: { position: 'relative', width: '100%', height: 220 },
+      multiChartSvg: { width: '100%', height: 220, display: 'block' },
+      multiMinLabel: { position: 'absolute', left: 0, bottom: 0, fontSize: 11, color: t.text3 },
+      multiMaxLabel: { position: 'absolute', left: 0, top: 0, fontSize: 11, color: t.text3 },
+      multiHoverLine: { stroke: t.glassBorder, strokeWidth: 1 },
+      multiTooltipDate: { fontSize: 11, fontWeight: 700, color: t.text3, marginBottom: 6, textTransform: 'capitalize' },
+      multiTooltipRow: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, padding: '2px 0' },
+      multiTooltipName: { flex: 1, color: t.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+      multiAxisRow: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: t.text3, marginTop: 6 },
+      bestWorstRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
+      bestWorstCard: { background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, borderRadius: 12, padding: 16 },
+      bestWorstLabel: { fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: t.text3 },
+      bestWorstName: { fontSize: 15, fontWeight: 700, color: t.text1, marginTop: 4 },
+
+      aiInsightWrap: { position: 'fixed', bottom: 128, left: '50%', transform: 'translateX(-50%)', width: 'min(640px, 92vw)', zIndex: 40 },
+      aiInsightCard: { ...glass, borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 12, color: t.text1 },
+      aiInsightIcon: { fontSize: 15, color: t.accent, flexShrink: 0, marginTop: 1 },
+      aiInsightText: { flex: 1, fontSize: 13, lineHeight: 1.5, color: t.text1 },
+      aiInsightExtra: { marginTop: 8, fontSize: 13, lineHeight: 1.5, color: t.text2 },
+      aiInsightExpand: { fontSize: 12.5, fontWeight: 700, color: t.accent, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' },
+
+      txFormRow: { display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.3fr auto', gap: 10 },
+      financeFormRow5: { display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.9fr 0.9fr auto', gap: 8, marginTop: 8 },
+      financeFormRow6: { display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.7fr 1fr auto', gap: 8, marginTop: 8 },
+      financeFormError: { fontSize: 12, color: t.red, marginTop: 6 },
+      // An explicit delete affordance, not "the whole row is a button" —
+      // that shape cost a real accidental deletion once already.
+      rowDeleteBtn: { width: 26, height: 26, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, lineHeight: 1, color: t.text3, cursor: 'pointer', flexShrink: 0 },
+      recurringList: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4 },
+      recurringRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderTop: `1px solid ${t.glassBorder}` },
+      recurringInfo: { flex: 1 },
+      recurringName: { fontSize: 13.5, fontWeight: 600, color: t.text1 },
+      recurringMeta: { fontSize: 12, color: t.text3, marginTop: 2 },
+      financeFormHint: { fontSize: 11, color: t.text3, marginTop: 6, lineHeight: 1.4 },
+      txInput: { padding: '10px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter', width: '100%', boxSizing: 'border-box' },
+      txSelect: { padding: '10px 12px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, color: t.text1, fontSize: 13.5, outline: 'none', fontFamily: 'Inter', cursor: 'pointer', width: '100%', boxSizing: 'border-box' },
+      txAddBtn: { width: 40, height: 40, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 300, cursor: 'pointer', flexShrink: 0 },
+      txList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
+      txRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', borderTop: `1px solid ${t.glassBorder}` },
+      txInfo: { flex: 1 },
+      txCategory: { fontSize: 13.5, fontWeight: 600, color: t.text1 },
+      txMeta: { fontSize: 12, color: t.text3, marginTop: 2 },
+
+      monthlySummaryRow: { display: 'flex', gap: 24 },
+      monthlySummaryBlock: { flex: 1 },
+      monthlySummaryLabel: { fontSize: 12, color: t.text2 },
+      monthlySummaryValIncome: { fontSize: 20, fontWeight: 800, color: t.green, marginTop: 4 },
+      monthlySummaryValExpense: { fontSize: 20, fontWeight: 800, color: t.red, marginTop: 4 },
+      monthlyChartWrap: { display: 'flex', gap: 10, alignItems: 'flex-end', height: 140, padding: '8px 0' },
+      monthCol: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%' },
+      monthBars: { display: 'flex', gap: 4, alignItems: 'flex-end', flex: 1, width: '100%', justifyContent: 'center' },
+      monthLabel: { fontSize: 11, color: t.text3 },
+      monthlyLegend: { display: 'flex', gap: 20 },
+      legendDotIncome: { width: 8, height: 8, borderRadius: '50%', background: t.green, marginRight: 6 },
+      legendDotExpense: { width: 8, height: 8, borderRadius: '50%', background: t.red, marginRight: 6 },
+
+      chatBarWrap: { position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', width: 'min(680px, 92vw)', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' },
+      replyBubble: { ...glass, borderRadius: 14, padding: '12px 16px', fontSize: 13.5, lineHeight: 1.5, color: t.text1, width: '100%', boxSizing: 'border-box' },
+      chatSuggestions: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+      chatChip: { ...glass, borderRadius: 999, padding: '7px 14px', fontSize: 12.5, color: t.text2, cursor: 'pointer' },
+      chatBar: { ...glass, borderRadius: 14, padding: '8px 8px 8px 14px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' },
+      chatInput: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: t.text1, fontSize: 14, fontFamily: 'Inter' },
+      chatMic: { width: 34, height: 34, borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 14 },
+      chatSend: { width: 38, height: 38, borderRadius: 10, background: t.accent, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, fontSize: 16 },
+    };
+
+    // segmented toggle
+    const pillBase = { padding: '9px 20px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' };
+    const tabPill = {
+      overviewStyle: { ...pillBase, background: isPanoramica ? t.accent : 'transparent', color: isPanoramica ? 'white' : t.text2 },
+      investStyle: { ...pillBase, background: isInvestimenti ? t.accent : 'transparent', color: isInvestimenti ? 'white' : t.text2 },
+      selectOverview: () => this.selectTab('panoramica'),
+      selectInvest: () => this.selectTab('investimenti'),
+    };
+
+    const periodPillBase = { padding: '6px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease' };
+    const periodPill = {
+      p30Style: { ...periodPillBase, background: s.chartPeriod === '30g' ? t.accent : 'transparent', color: s.chartPeriod === '30g' ? 'white' : t.text2 },
+      p1yStyle: { ...periodPillBase, background: s.chartPeriod === '1a' ? t.accent : 'transparent', color: s.chartPeriod === '1a' ? 'white' : t.text2 },
+      select30: () => this.selectChartPeriod('30g'),
+      select1y: () => this.selectChartPeriod('1a'),
+    };
+
+    // accounts — real, user-entered (see lifeos-store.mjs / addAccountRow). No
+    // history is tracked, so totals reflect this instant only.
+    const accountData = s.accounts;
+    const filterDefs = [{ key: 'tutti', label: 'Tutti' }, { key: 'banche', label: 'Banche' }, { key: 'broker', label: 'Broker' }, { key: 'crypto', label: 'Crypto' }];
+    const accountFilters = filterDefs.map(f => ({
+      label: f.label,
+      style: { ...periodPillBase, background: s.accountFilter === f.key ? t.accent : 'transparent', color: s.accountFilter === f.key ? 'white' : t.text2 },
+      select: () => this.selectAccountFilter(f.key),
+    }));
+    const accounts = accountData
+      .filter(a => s.accountFilter === 'tutti' || a.type === s.accountFilter)
+      .map(a => ({
+        name: a.name, inst: a.inst, mono: (a.inst || a.name).slice(0, 2).toUpperCase(),
+        balanceLabel: fmtEur(a.balance),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: 14, padding: '11px 8px', borderRadius: 12, background: t.glassBgSoft },
+        iconStyle: { width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 },
+        remove: () => this.removeAccountRow(a.id),
+      }));
+
+    // A flat two-point line — honest in the absence of any real tracked
+    // history, unlike a fabricated up-and-to-the-right series.
+    const flatSpark = (w, h, pad) => `0,${(h - pad).toFixed(1)} ${w},${(h - pad).toFixed(1)}`;
+
+    const bankAccounts = accountData.filter(a => a.type === 'banche');
+    const liquidityTotal = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const liquidity = {
+      total: fmtEur(liquidityTotal),
+      sparkPoints: flatSpark(200, 44, 3),
+      split: bankAccounts.map(a => ({ label: a.name, value: fmtEur(a.balance) })),
+    };
+
+    const liabData = s.liabilities;
+    const liabTotal = liabData.reduce((a, b) => a + b.resid, 0);
+    const liabilities = {
+      total: fmtEur(liabTotal),
+      items: liabData.map(l => ({
+        name: l.name, residLabel: fmtEur(l.resid), nextDate: l.nextDate,
+        fillStyle: { height: '100%', width: (l.original > 0 ? ((l.original - l.resid) / l.original) * 100 : 0) + '%', borderRadius: 999, background: t.accent },
+        remove: () => this.removeLiabilityRow(l.id),
+      })),
+    };
+
+    // investments — real holdings, one row per symbol (see mergeAssetLot in
+    // lifeos-store.mjs; buying more of something already held adds a lot to
+    // its row rather than a second row). Deltas are the market's own real
+    // 24h/7d/30d/1y % change (see lookupDetails in market-prices.mjs), not
+    // fabricated. Colors cycle through the palette by position, not stored.
+    const ASSET_COLORS = [t.accent, t.amber, t.violet, t.teal, t.gray, t.green, t.red];
+    const assetSpark = (vals) => {
+      const max = Math.max(...vals), min = Math.min(...vals);
+      return vals.map((v, i) => `${(i / (vals.length - 1) * 60).toFixed(1)},${(22 - (v - min) / (max - min || 1) * 18).toFixed(1)}`).join(' ');
+    };
+    const assetData = s.assets.map((a, i) => ({
+      ...a, color: ASSET_COLORS[i % ASSET_COLORS.length],
+      d24: a.d24 ?? 0, d7: a.d7 ?? 0, d30: a.d30 ?? 0, d1a: a.d1a ?? 0,
+      value: (Number(a.qty) || 0) * (Number(a.price) || 0),
+      costBasis: (Number(a.qty) || 0) * (Number(a.avg) || 0),
+    }));
+
+    const investTotalAmt = assetData.reduce((a, b) => a + b.value, 0);
+    // Real unrealized gain: current value against what was actually paid
+    // (each asset's lot-weighted "avg" — see recomputeAggregate in
+    // lifeos-store.mjs), not the chart's first-vs-last point. That endpoint
+    // comparison looks like a return but isn't one for anything bought via
+    // recurring buys/PAC: adding a new lot changes the quantity held, so a
+    // bigger total today can be almost entirely new money in, not growth —
+    // measured on a BTC PAC position where it read as a wildly wrong % versus
+    // the real ~50% gain the cost basis gives.
+    const totalCostBasis = assetData.reduce((a, b) => a + b.costBasis, 0);
+    const totalGain = investTotalAmt - totalCostBasis;
+    const totalGainPct = totalCostBasis ? (totalGain / totalCostBasis) * 100 : 0;
+    const invested = {
+      total: fmtEur(investTotalAmt),
+      breakdown: assetData.map(a => ({
+        label: a.name, amtLabel: fmtEur(a.value), pctLabel: (investTotalAmt ? (a.value / investTotalAmt) * 100 : 0).toFixed(1) + '%',
+        segStyle: { width: (investTotalAmt ? (a.value / investTotalAmt) * 100 : 0) + '%', background: a.color },
+        dotStyle: { width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 },
+      })),
+    };
+
+    // hero + chart — a real daily series built by combining every asset's
+    // own priceHistory with when each lot was actually bought: before a
+    // lot's purchase date it contributes nothing, so the line only reflects
+    // what was actually held on each day, not the current total projected
+    // backwards. Accounts/liabilities aren't tracked historically (nothing
+    // fetches a bank balance's past), so "patrimonio" adds today's cash
+    // minus debt as a constant offset on top of the real invested line —
+    // the fluctuation you see is genuinely the portfolio's, the level is
+    // anchored to today. Empty portfolio (no price history yet) falls back
+    // to the flat current-total line rather than nothing.
+    const combinedPortfolioSeries = (assets) => {
+      const allDays = new Set();
+      for (const a of assets) for (const p of (a.priceHistory || [])) allDays.add(p.date.slice(0, 10));
+      if (!allDays.size) return null;
+      const days = [...allDays].sort();
+      const perAsset = assets.map(a => ({
+        points: (a.priceHistory || []).map(p => ({ day: p.date.slice(0, 10), price: p.price })),
+        lots: [...(a.lots || [])].map(l => ({ day: (l.date || '').slice(0, 10), qty: Number(l.qty) || 0 })).sort((x, y) => x.day.localeCompare(y.day)),
+      }));
+      return days.map(day => {
+        let total = 0;
+        for (const { points, lots } of perAsset) {
+          let price = null;
+          for (const p of points) { if (p.day <= day) price = p.price; else break; }
+          if (price == null) continue;
+          let qty = 0;
+          for (const l of lots) { if (l.day <= day) qty += l.qty; }
+          total += qty * price;
+        }
+        return total;
+      });
+    };
+    const allAccountsTotal = accountData.reduce((sum, a) => sum + a.balance, 0);
+    const netWorthTotal = allAccountsTotal + investTotalAmt - liabTotal;
+    const investedSeriesFull = combinedPortfolioSeries(assetData);
+    const netWorthSeriesFull = investedSeriesFull ? investedSeriesFull.map(v => v + (allAccountsTotal - liabTotal)) : null;
+    const sliceByPeriod = (series) => {
+      if (!series || series.length < 2) return null;
+      if (s.chartPeriod === '30g') { const s30 = series.slice(-30); return s30.length >= 2 ? s30 : series.slice(-2); }
+      return series; // '1a' shows everything real history we have
+    };
+    const heroSeries =
+      sliceByPeriod(isPanoramica ? netWorthSeriesFull : investedSeriesFull)
+      ?? (isPanoramica ? [netWorthTotal, netWorthTotal] : [investTotalAmt, investTotalAmt]);
+    const chartRaw = areaChart(heroSeries, t.accent, s.hoverIndex);
+    const periodPositive = chartRaw.periodDelta >= 0;
+    const chart = {
+      areaPath: chartRaw.areaPath, linePath: chartRaw.linePath, gradColor: chartRaw.gradColor,
+      minPt: chartRaw.minPt, maxPt: chartRaw.maxPt, minLabel: chartRaw.minLabel, maxLabel: chartRaw.maxLabel,
+      hasHover: chartRaw.hasHover, hoverPt: chartRaw.hoverPt, tooltipValue: chartRaw.hoverValue,
+      tooltipStyle: { position: 'absolute', left: (chartRaw.hoverPt.x / 10) + '%', top: Math.max(0, (chartRaw.hoverPt.y / 240) * 100 - 12) + '%', transform: 'translate(-50%, -100%)', background: t.text1, color: t.bg, fontSize: 12, fontWeight: 700, padding: '4px 9px', borderRadius: 7, whiteSpace: 'nowrap', pointerEvents: 'none' },
+      onMove: this.onChartMove, onLeave: this.onChartLeave,
+      periodDeltaText: fmtEur(Math.abs(chartRaw.periodDelta)) + ' (' + fmtPct(chartRaw.periodDeltaPct) + ')',
+      periodDeltaStyle: { fontSize: 13.5, fontWeight: 700, color: periodPositive ? t.green : t.red },
+    };
+    const hero = isPanoramica ? {
+      label: 'PATRIMONIO NETTO', big: fmtEur(netWorthTotal),
+      deltaText: fmtEur(Math.abs(chartRaw.periodDelta)) + ' · ' + fmtPct(chartRaw.periodDeltaPct),
+      deltaChipStyle: { fontSize: 14, fontWeight: 700, color: periodPositive ? t.green : t.red, background: periodPositive ? t.greenSoft : t.redSoft, padding: '9px 16px', borderRadius: 10 },
+      chartTitle: 'Andamento patrimonio',
+    } : {
+      label: 'VALORE INVESTITO', big: fmtEur(investTotalAmt),
+      deltaText: fmtEur(Math.abs(totalGain)) + ' · ' + fmtPct(totalGainPct) + ' totale',
+      deltaChipStyle: { fontSize: 14, fontWeight: 700, color: totalGain >= 0 ? t.green : t.red, background: totalGain >= 0 ? t.greenSoft : t.redSoft, padding: '9px 16px', borderRadius: 10 },
+      chartTitle: 'Andamento portafoglio',
+    };
+
+    const sortKey = s.sortKey, sortDir = s.sortDir;
+    const sortedAssets = [...assetData].sort((x, y) => {
+      const kv = { value: 'value', d24: 'd24', d7: 'd7', d30: 'd30', d1a: 'd1a' }[sortKey] || 'value';
+      return sortDir === 'desc' ? y[kv] - x[kv] : x[kv] - y[kv];
+    });
+    const deltaChip = (v) => ({ chip: { fontSize: 12, fontWeight: 700, color: v >= 0 ? t.green : t.red, textAlign: 'right' }, text: fmtPct(v) });
+    const assets = sortedAssets.map(a => {
+      const isOpen = s.expandedAssetId === a.id;
+      // Per-lot gain/loss — how THIS purchase has done against today's
+      // price, distinct from the row's own 24h/7d/30d/1y market deltas.
+      const lots = (a.lots || []).map(l => {
+        const gainPct = l.price ? ((a.price - l.price) / l.price) * 100 : 0;
+        return {
+          id: l.id,
+          qty: fmtQty(l.qty, a.assetClass), priceLabel: fmtEur(l.price),
+          dateLabel: l.date ? new Date(l.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
+          gain: { fontSize: 12, fontWeight: 700, color: gainPct >= 0 ? t.green : t.red },
+          gainLabel: fmtPct(gainPct),
+          remove: () => this.removeAssetLotRow(a.id, l.id),
+        };
+      });
+      return {
+        id: a.id, name: a.name, symbol: a.symbol, qty: fmtQty(a.qty, a.assetClass), mono: (a.symbol || a.name).slice(0, 2).toUpperCase(),
+        avgLabel: fmtEur(a.avg), priceLabel: fmtEur(a.price), valueLabel: fmtEur(a.value),
+        logoStyle: { width: 34, height: 34, borderRadius: '50%', background: a.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 },
+        d24: deltaChip(a.d24), d7: deltaChip(a.d7), d30: deltaChip(a.d30), d1a: deltaChip(a.d1a),
+        sparkPoints: assetSpark([a.price || 0, a.price || 0]), sparkStroke: { stroke: a.d1a >= 0 ? t.green : t.red },
+        remove: () => this.removeAssetRow(a.id),
+        toggleDetail: () => this.toggleAssetDetail(a.id),
+        nameCellStyle: { display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' },
+        isOpen, hasLots: lots.length > 1, lots,
+        detailCount: lots.length + ' acquist' + (lots.length === 1 ? 'o' : 'i'),
+      };
+    });
+    const sortHeaderStyle = (key) => ({ textAlign: 'right', fontSize: 11, fontWeight: 700, color: sortKey === key ? t.accent : t.text3, textTransform: 'uppercase', cursor: 'pointer' });
+    const assetSort = {
+      h24: { style: sortHeaderStyle('d24'), click: () => this.toggleSort('d24') },
+      h7: { style: sortHeaderStyle('d7'), click: () => this.toggleSort('d7') },
+      h30: { style: sortHeaderStyle('d30'), click: () => this.toggleSort('d30') },
+      h1a: { style: sortHeaderStyle('d1a'), click: () => this.toggleSort('d1a') },
+    };
+
+    const allocTotal = assetData.reduce((a, b) => a + b.value, 0);
+    let cursor = 0;
+    const allocGradParts = [];
+    const allocation = assetData.map(a => {
+      const pct = allocTotal ? (a.value / allocTotal) * 100 : 0;
+      allocGradParts.push(`${a.color} ${cursor.toFixed(1)}% ${(cursor + pct).toFixed(1)}%`);
+      cursor += pct;
+      return { name: (a.symbol ? a.symbol + ' — ' : '') + a.name, pctLabel: pct.toFixed(1) + '%', dotStyle: { width: 9, height: 9, borderRadius: '50%', background: a.color, flexShrink: 0 } };
+    });
+    styles.donut = { ...styles.donut, background: allocGradParts.length ? `conic-gradient(${allocGradParts.join(', ')})` : t.trackBg };
+
+    // andamenti multi chart — real daily closes since each asset's own
+    // earliest purchase (see priceHistory, fetched server-side in
+    // server.mjs from that lot's real date), not a fabricated line.
+    // "Tutto" is the full history as bought; the other periods slice the
+    // last N days out of it. Every series is indexed to 100 at the start
+    // of whatever window is selected, so they're comparable on one chart
+    // regardless of the asset's actual price scale.
+    const periodDefs = ['1G', '7G', '30G', '1A', 'Tutto'];
+    const investPeriods = periodDefs.map(p => ({
+      label: p,
+      style: { ...periodPillBase, background: s.investPeriod === p ? t.accent : 'transparent', color: s.investPeriod === p ? 'white' : t.text2 },
+      select: () => this.selectInvestPeriod(p),
+    }));
+    const PERIOD_DAYS = { '1G': 1, '7G': 7, '30G': 30, '1A': 365, 'Tutto': Infinity };
+    // Each asset's line is indexed to 100 at ITS OWN first point in the
+    // window (so slopes stay comparable regardless of price scale) but
+    // placed on a SHARED calendar axis built from the real dates in play —
+    // a position opened two months after another now starts its line two
+    // months in, rather than being stretched edge-to-edge to match a much
+    // older one's history. Drawing every series 0→1000 by point INDEX
+    // instead of by date used to make an asset with 55 days of real history
+    // span the same width as one with 229, implying they cover the same
+    // calendar time when they very much don't.
+    const seriesForPeriod = (history, days) => {
+      if (!history?.length) return [];
+      const cutoff = days === Infinity ? 0 : Date.now() - days * 86400000;
+      const points = history.filter(p => new Date(p.date).getTime() >= cutoff);
+      const use = points.length >= 2 ? points : history.slice(-2);
+      if (use.length < 2) return [];
+      const base = use[0].price || 1;
+      return use.map(p => ({ day: p.date.slice(0, 10), index: (p.price / base) * 100 }));
+    };
+    const seriesDefs = assetData
+      .filter(a => a.priceHistory?.length >= 2)
+      .map(a => ({
+        name: (a.symbol ? a.symbol + ' — ' : '') + a.name, color: a.color,
+        data: Object.fromEntries(Object.entries(PERIOD_DAYS).map(([k, days]) => [k, seriesForPeriod(a.priceHistory, days)])),
+      }));
+    const activePoints = seriesDefs.map(sd => sd.data[s.investPeriod]);
+    const allDays = [...new Set(activePoints.flat().map(p => p.day))].sort();
+    const dayX = Object.fromEntries(allDays.map((d, i) => [d, allDays.length > 1 ? (i / (allDays.length - 1)) * 1000 : 500]));
+    // Not Math.min(...allVals, 0)/Math.max(...allVals, 1): those extra args
+    // are candidates in the min/max, not empty-array fallbacks — they always
+    // floored the range at 0/100 even when every real value sat well above
+    // it (measured: forced the y-axis min label to "-100%" instead of the
+    // real ~-13%), flattening the lines against a false floor/ceiling too.
+    const allVals = activePoints.flat().map(p => p.index);
+    const vMax = allVals.length ? Math.max(...allVals) : 100;
+    const vMin = allVals.length ? Math.min(...allVals) : 100;
+    const multiY = (v) => 200 - ((v - vMin) / (vMax - vMin || 1)) * 180 - 10;
+    const buildMultiPath = (points) =>
+      points.map((p, i) => (i === 0 ? 'M' : 'L') + dayX[p.day].toFixed(1) + ',' + multiY(p.index).toFixed(1)).join(' ');
+    const seriesDelta = (points) =>
+      points[0]?.index ? ((points[points.length - 1].index - points[0].index) / points[0].index) * 100 : 0;
+    const dateLabel = (day) => new Date(day).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    // Hover: same fraction-of-width technique as the hero chart's onChartMove,
+    // but resolved against allDays (this chart's own real calendar axis)
+    // rather than a fixed bucket count — carries each series forward from
+    // its own last known point at/before the hovered day, so an asset not
+    // yet bought on that day just doesn't show a row instead of a wrong one.
+    const multiHoverIdx = s.multiHoverFrac != null && allDays.length > 1 ? Math.round(s.multiHoverFrac * (allDays.length - 1)) : null;
+    const multiHoverDay = multiHoverIdx != null ? allDays[multiHoverIdx] : null;
+    const multiHoverRows = multiHoverDay ? seriesDefs.map(sd => {
+      const pts = sd.data[s.investPeriod];
+      let val = null;
+      for (const p of pts) { if (p.day <= multiHoverDay) val = p.index; else break; }
+      return val == null ? null : {
+        name: sd.name,
+        dotStyle: { width: 7, height: 7, borderRadius: '50%', background: sd.color, flexShrink: 0 },
+        valueLabel: fmtPct(val - 100),
+        valueStyle: { fontSize: 12.5, fontWeight: 700, color: val >= 100 ? t.green : t.red },
+        cx: dayX[multiHoverDay], cy: multiY(val),
+        svgDotStyle: { fill: sd.color },
+      };
+    }).filter(Boolean) : [];
+    const multiChart = seriesDefs.length ? {
+      legend: seriesDefs.map(sd => {
+        const delta = seriesDelta(sd.data[s.investPeriod]);
+        return { name: sd.name, dotStyle: { width: 8, height: 8, borderRadius: '50%', background: sd.color }, deltaLabel: fmtPct(delta), deltaStyle: { fontSize: 12.5, fontWeight: 700, color: delta >= 0 ? t.green : t.red } };
+      }),
+      paths: seriesDefs.map(sd => ({ d: buildMultiPath(sd.data[s.investPeriod]), style: { stroke: sd.color } })),
+      minLabel: fmtPct(vMin - 100), maxLabel: fmtPct(vMax - 100),
+      startLabel: allDays.length ? dateLabel(allDays[0]) : '', endLabel: allDays.length ? dateLabel(allDays[allDays.length - 1]) : '',
+      onMove: this.onMultiChartMove, onLeave: this.onMultiChartLeave,
+      hasHover: !!multiHoverDay, hoverX: multiHoverDay ? dayX[multiHoverDay] : 0,
+      hoverDateLabel: multiHoverDay ? new Date(multiHoverDay).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+      hoverRows: multiHoverRows,
+      tooltipStyle: {
+        position: 'absolute', top: 0, left: (multiHoverDay ? dayX[multiHoverDay] / 10 : 0) + '%', transform: 'translateX(-50%)',
+        background: t.glassBg, border: `1px solid ${t.glassBorder}`, borderRadius: 10, padding: '8px 10px', pointerEvents: 'none', boxShadow: t.shadow, minWidth: 120,
+      },
+      best: (() => {
+        const b = seriesDefs.reduce((a, c) => seriesDelta(c.data[s.investPeriod]) > seriesDelta(a.data[s.investPeriod]) ? c : a);
+        const delta = seriesDelta(b.data[s.investPeriod]);
+        return { name: b.name, deltaLabel: fmtPct(delta), deltaStyle: { fontSize: 16, fontWeight: 700, color: t.green, marginTop: 4 } };
+      })(),
+      worst: (() => {
+        const w = seriesDefs.reduce((a, c) => seriesDelta(c.data[s.investPeriod]) < seriesDelta(a.data[s.investPeriod]) ? c : a);
+        const delta = seriesDelta(w.data[s.investPeriod]);
+        return { name: w.name, deltaLabel: fmtPct(delta), deltaStyle: { fontSize: 16, fontWeight: 700, color: delta >= 0 ? t.green : t.red, marginTop: 4 } };
+      })(),
+    } : {
+      legend: [], paths: [],
+      minLabel: '', maxLabel: '', startLabel: '', endLabel: '',
+      onMove: this.onMultiChartMove, onLeave: this.onMultiChartLeave,
+      hasHover: false, hoverX: 0, hoverDateLabel: '', hoverRows: [], tooltipStyle: {},
+      best: { name: '—', deltaLabel: '', deltaStyle: {} },
+      worst: { name: '—', deltaLabel: '', deltaStyle: {} },
+    };
+
+    const aiInsight = {
+      summary: assetData.length
+        ? `Il tuo portafoglio vale ${fmtEur(investTotalAmt)} su ${assetData.length} posizion${assetData.length === 1 ? 'e' : 'i'}.`
+        : 'Aggiungi le tue posizioni nella tabella Asset per vedere qui un riepilogo.',
+      extra: '',
+      expanded: s.aiInsightExpanded, toggleLabel: s.aiInsightExpanded ? 'Riduci' : 'Espandi',
+      toggle: this.toggleAiInsight,
+    };
+
+    const chatSuggData = isPanoramica
+      ? ['Quanto ho risparmiato questo mese?', 'Registra una spesa', 'Controlla il mercato']
+      : ['Analizza il mio portafoglio', 'Rischio e diversificazione', 'Cosa è cambiato questa settimana?'];
+    const chatSuggestions = chatSuggData.map(label => ({ label, select: () => this.setState({ chatText: label }) }));
+    const chatBar = {
+      placeholder: isPanoramica ? 'Chiedi dei tuoi conti, spese o eventi…' : 'Chiedi dei tuoi investimenti…',
+      iconStyle: { fontSize: 15, color: t.accent, flexShrink: 0 },
+    };
+
+    const txForm = {
+      spesaStyle: { ...periodPillBase, background: s.txType === 'spesa' ? t.accent : 'transparent', color: s.txType === 'spesa' ? 'white' : t.text2 },
+      entrataStyle: { ...periodPillBase, background: s.txType === 'entrata' ? t.accent : 'transparent', color: s.txType === 'entrata' ? 'white' : t.text2 },
+      selectSpesa: () => this.setTxType('spesa'), selectEntrata: () => this.setTxType('entrata'),
+      amount: s.txAmount, onAmountChange: (e) => this.setTxAmount(e.target.value),
+      category: s.txCategory, onCategoryChange: (e) => this.setTxCategory(e.target.value),
+      categoryOptions: s.txType === 'spesa' ? this.spesaCategories : this.entrataCategories,
+      account: s.txAccount, onAccountChange: (e) => this.setTxAccount(e.target.value),
+      accountOptions: this.accountNames,
+      add: this.addTransaction,
+    };
+    const transactions = s.transactions.slice(0, 6).map(tx => {
+      const positive = tx.type === 'entrata';
+      return {
+        category: tx.category, account: tx.account, date: tx.date,
+        dotStyle: { width: 8, height: 8, borderRadius: '50%', background: positive ? t.green : t.red, flexShrink: 0 },
+        amountStyle: { fontSize: 14, fontWeight: 700, color: positive ? t.green : t.red },
+        amountLabel: (positive ? '+' : '-') + fmtEur(tx.amount).replace('€ ', '€ '),
+        remove: () => this.removeTransactionRow(tx.id),
+      };
+    });
+
+    // Last 6 calendar months, real transactions only (see realTransactions in
+    // componentDidMount) — zero bars rather than a fabricated income history.
+    const MONTH_ABBR = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(s.now.getFullYear(), s.now.getMonth() - (5 - i), 1);
+      return { key: d.getFullYear() + '-' + d.getMonth(), month: MONTH_ABBR[d.getMonth()], income: 0, expense: 0 };
+    });
+    for (const tx of (s.realTransactions || [])) {
+      const d = new Date(tx.date);
+      const bucket = monthlyData.find(m => m.key === d.getFullYear() + '-' + d.getMonth());
+      if (!bucket) continue;
+      if (tx.type === 'entrata') bucket.income += tx.amount; else bucket.expense += tx.amount;
+    }
+    const monthlyMax = Math.max(1, ...monthlyData.flatMap(m => [m.income, m.expense]));
+    const monthlyChart = monthlyData.map(m => ({
+      month: m.month,
+      incomeBarStyle: { width: 14, height: ((m.income / monthlyMax) * 100) + '%', borderRadius: '4px 4px 0 0', background: t.green },
+      expenseBarStyle: { width: 14, height: ((m.expense / monthlyMax) * 100) + '%', borderRadius: '4px 4px 0 0', background: t.red },
+    }));
+    const currentMonth = monthlyData[monthlyData.length - 1];
+    const currentMonthLabel = s.now.toLocaleDateString('it-IT', { month: 'long' });
+    const monthlySummary = { incomeLabel: fmtEur(currentMonth.income), expenseLabel: fmtEur(currentMonth.expense) };
+
+    const newAccountForm = {
+      name: s.newAccount.name, onName: (e) => this.setNewAccountField('name', e.target.value),
+      inst: s.newAccount.inst, onInst: (e) => this.setNewAccountField('inst', e.target.value),
+      type: s.newAccount.type, onType: (e) => this.setNewAccountField('type', e.target.value),
+      balance: s.newAccount.balance, onBalance: (e) => this.setNewAccountField('balance', e.target.value),
+      add: this.addAccountRow,
+    };
+    const newLiabilityForm = {
+      name: s.newLiability.name, onName: (e) => this.setNewLiabilityField('name', e.target.value),
+      original: s.newLiability.original, onOriginal: (e) => this.setNewLiabilityField('original', e.target.value),
+      resid: s.newLiability.resid, onResid: (e) => this.setNewLiabilityField('resid', e.target.value),
+      nextDate: s.newLiability.nextDate, onNextDate: (e) => this.setNewLiabilityField('nextDate', e.target.value),
+      add: this.addLiabilityRow,
+    };
+    const newAssetForm = {
+      name: s.newAsset.name, onName: (e) => this.setNewAssetField('name', e.target.value),
+      symbol: s.newAsset.symbol, onSymbol: (e) => this.setNewAssetField('symbol', e.target.value),
+      assetClass: s.newAsset.assetClass, onAssetClass: (e) => this.setNewAssetField('assetClass', e.target.value),
+      qty: s.newAsset.qty, onQty: (e) => this.setNewAssetField('qty', e.target.value),
+      purchaseDate: s.newAsset.purchaseDate, onPurchaseDate: (e) => this.setNewAssetField('purchaseDate', e.target.value),
+      add: this.addAssetRow,
+      error: s.newAssetError,
+      hasError: !!s.newAssetError,
+    };
+
+    const recurringBuys = s.recurringBuys.map(rb => ({
+      name: rb.name, symbol: rb.symbol,
+      amountLabel: fmtEur(rb.amountEur), frequencyLabel: rb.frequency === 'weekly' ? 'ogni settimana' : 'ogni mese',
+      nextRunLabel: new Date(rb.nextRunIso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
+      dotStyle: { width: 8, height: 8, borderRadius: '50%', background: rb.active ? t.green : t.text3, flexShrink: 0 },
+      toggleStyle: { ...periodPillBase, background: 'transparent', color: t.text2, border: `1px solid ${t.glassBorder}` },
+      toggleLabel: rb.active ? 'Pausa' : 'Riprendi',
+      toggleActive: () => this.toggleRecurringBuyActive(rb),
+      remove: () => this.removeRecurringBuyRow(rb.id),
+    }));
+    const newRecurringForm = {
+      name: s.newRecurring.name, onName: (e) => this.setNewRecurringField('name', e.target.value),
+      symbol: s.newRecurring.symbol, onSymbol: (e) => this.setNewRecurringField('symbol', e.target.value),
+      assetClass: s.newRecurring.assetClass, onAssetClass: (e) => this.setNewRecurringField('assetClass', e.target.value),
+      amountEur: s.newRecurring.amountEur, onAmountEur: (e) => this.setNewRecurringField('amountEur', e.target.value),
+      frequency: s.newRecurring.frequency, onFrequency: (e) => this.setNewRecurringField('frequency', e.target.value),
+      add: this.addRecurringBuyRow,
+      error: s.newRecurringError,
+      hasError: !!s.newRecurringError,
+    };
+
+    return {
+      styles, timeStr, dateStr, btc, eunl, toggleTheme: this.toggleTheme,
+      txForm, transactions, monthlyChart, monthlySummary, currentMonthLabel,
+      isPanoramica, isInvestimenti, tabPill,
+      hero, chart, periodPill,
+      accountFilters, accounts, liquidity, invested, liabilities,
+      allocation, assets, assetSort, investPeriods, multiChart,
+      aiInsight, chatSuggestions, chatBar,
+      newAccountForm, newLiabilityForm, newAssetForm,
+      recurringBuys, newRecurringForm,
+      chatText: s.chatText, lastReply: s.lastReply,
+      onChatChange: (e) => this.setState({ chatText: e.target.value }),
+      onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
+      onChatSubmit: this.onChatSubmit,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
