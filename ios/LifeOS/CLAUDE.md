@@ -16,3 +16,13 @@ python3 scripts/bump-version.py <major|minor|patch> --added "..." --changed "...
 - `patch`: correzione di un errore o ritocco piccolo.
 - Sale un solo numero, di uno, e i numeri a destra tornano a 0. Nel dubbio, il livello più basso.
 - Lancia lo script dopo aver finito e verificato la modifica, con una voce chiara in italiano.
+
+## Release su GitHub
+
+Dopo bump, commit e push, pubblica la versione come release (tag `vX.Y.Z`, note prese da `CHANGELOG.md`):
+
+```bash
+python3 scripts/release.py          # --dry-run per vedere le note senza pubblicare
+```
+
+Rifiuta di partire con modifiche non committate o commit non spinti su `origin`.
