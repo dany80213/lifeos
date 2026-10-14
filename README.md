@@ -304,11 +304,42 @@ All of this lives in `bridge/server.mjs`:
 - The tool gate (`decideTool`) is default-deny for effectful MCP tools.
 - A strict CSP in `index.html`; model-authored panel HTML is sanitised.
 
+## LifeOS
+
+This fork adds **LifeOS**, a personal dashboard that runs on top of the JARVIS
+bridge: finances, health and nutrition, weekly review, calendar and reminders
+(Apple, through CalDAV), school diary sync, and an assistant that can really
+act on them (add an event with a location and alerts, log an expense or a meal)
+through Groq's OpenAI-compatible API.
+
+| Part | Where |
+|---|---|
+| Server routes, store, CalDAV, tools | `bridge/lifeos*.mjs`, `bridge/server.mjs` |
+| Web pages | `web/lifeos/` |
+| iPhone and Mac apps (SwiftUI) | `ios/LifeOS/` |
+
+**Run it**
+
+1. Copy `.env.example` to `.env.local` and set the `LIFEOS_*` variables (user,
+   password hash from `scripts/lifeos-password.mjs`, session secret), plus
+   `QWEN_URL` / `QWEN_API_KEY` for the assistant (point it at Groq's
+   `/openai/v1/chat/completions`) and `APPLE_ID` / `APPLE_APP_PASSWORD` for the
+   calendar.
+2. `npm run bridge`. Data is stored under `data/` (git-ignored).
+3. Apps: `cd ios/LifeOS && xcodegen generate`, then open `LifeOS.xcodeproj`.
+   Set your own address in `Sources/ServerConfig.swift` and your signing team
+   in Xcode.
+
+Nothing personal ships in this repository: the store, tokens and passkeys live
+in `data/` and `.env.local`, both ignored.
+
 ---
 
 ## Credits & licence
 
-MIT.
+MIT. Copyright (c) 2026 Aditya Dewaskar, the original JARVIS project
+(<https://github.com/adewaskar/jarvis>), and Copyright (c) 2026 Daniele Porcaro,
+the LifeOS additions. See `LICENSE`.
 
 The boot sound and any tracks in `public/audio/` ship with the project for the
 demo. If you go on to monetise something built on this, clearing the rights to

@@ -25,3 +25,14 @@ dist-ssr
 
 # Copied out of node_modules by scripts/start.mjs — 34MB of build output.
 public/mediapipe/
+
+# LifeOS: personal data and build output
+data/
+.env.local
+.env.local.*
+ios/LifeOS/build/
+**/xcuserdata/
+**/DerivedData/
+*.xcuserstate
+.claude/
+ios/LifeOS/LifeOS.xcodeproj/
