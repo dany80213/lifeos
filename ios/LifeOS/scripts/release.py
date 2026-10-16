@@ -44,7 +44,10 @@ def main() -> None:
     print(f"Release {tag} su {branch}\n\n{notes}\n")
     if args.dry_run:
         return
-    subprocess.run(["gh", "release", "create", tag, "--target", branch, "--title", f"LifeOS {version}", "--notes", notes],
+    # Two remotes (origin = this repo, upstream = the original project): name the repo explicitly.
+    m = re.search(r"github\.com[:/](.+?)(?:\.git)?$", git("remote", "get-url", "origin"))
+    repo = m.group(1) if m else sys.exit("Non riesco a leggere il repository da origin.")
+    subprocess.run(["gh", "release", "create", tag, "--repo", repo, "--target", branch, "--title", f"LifeOS {version}", "--notes", notes],
                    cwd=ROOT, check=True)
 
 
