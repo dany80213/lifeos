@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfiloView: View {
     @EnvironmentObject var app: AppState
+    @EnvironmentObject var notifications: NotificationsStore
     @Environment(\.openURL) private var openURL
     @State private var newHabit = ""
     @State private var newDays: Set<Int> = []
@@ -34,11 +35,13 @@ struct ProfiloView: View {
             #if os(macOS)
             Row([1, 1, 1]) { profileLinkCard; appearanceCard; passkeyCard }
             Row([1, 1, 1]) { habitsCard; aiCard; fatsecretCard }
+            Row([1, 1, 1]) { notificationsCard; Color.clear; Color.clear }
             aboutCard
             #else
             profileLinkCard
             habitsCard
             aiCard
+            notificationsCard
             fatsecretCard
             passkeyCard
             appearanceCard
@@ -190,6 +193,44 @@ struct ProfiloView: View {
                 Button("Gestisci passkey") { openURL(url) }.buttonStyle(PillButtonStyle())
             }
             Text("Si apre Safari: se richiesto accedi una volta con la password. L'app usa la password; le passkey valgono per la web.")
+                .font(.caption).foregroundStyle(T.text3)
+        }
+    }
+
+    private var notificationsCard: some View {
+        Card {
+            CardLabel("NOTIFICHE")
+            Toggle("Resoconto IA del mattino", isOn: Binding(
+                get: { notifications.briefingOn },
+                set: { on in
+                    Task {
+                        if on, !(await notifications.ensureAuthorized()) { return }
+                        notifications.briefingOn = on
+                        await notifications.reschedule(verifiche: app.data["didupVerifiche"].array)
+                    }
+                }))
+            if notifications.briefingOn {
+                DatePicker("Ora", selection: Binding(
+                    get: { notifications.briefingTime },
+                    set: { t in
+                        notifications.briefingTime = t
+                        Task { await notifications.reschedule(verifiche: app.data["didupVerifiche"].array) }
+                    }), displayedComponents: .hourAndMinute)
+            }
+            Toggle("Verifica di domani, alle 20:00 della sera prima", isOn: Binding(
+                get: { notifications.verificheOn },
+                set: { on in
+                    Task {
+                        if on, !(await notifications.ensureAuthorized()) { return }
+                        notifications.verificheOn = on
+                        await notifications.reschedule(verifiche: app.data["didupVerifiche"].array)
+                    }
+                }))
+            if notifications.authorization == .denied {
+                Text("Le notifiche sono disattivate per LifeOS: abilitale da Impostazioni › Notifiche › LifeOS.")
+                    .font(.footnote).foregroundStyle(T.red)
+            }
+            Text("Il resoconto avvisa che è pronto; il testo completo lo trovi nella Home. Le notifiche si aggiornano quando apri l'app.")
                 .font(.caption).foregroundStyle(T.text3)
         }
     }

@@ -27,6 +27,12 @@ python3 scripts/bump-version.py patch --fixed "Cosa è stato corretto" --changed
 
 <!-- nuove versioni sotto questa riga -->
 
+## 1.13.0 — 2026-10-15
+
+**Aggiunto**
+- Notifiche: resoconto IA del mattino (ora a scelta, predefinita 06:00) e avviso la sera prima di ogni verifica, attivabili da Profilo
+
+
 ## 1.12.11 — 2026-10-09
 
 **Corretto**

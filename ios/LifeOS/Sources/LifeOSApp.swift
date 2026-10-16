@@ -5,6 +5,7 @@ struct LifeOSApp: App {
     @StateObject private var app = AppState()
     @StateObject private var reminders = RemindersStore()
     @StateObject private var health = HealthStore()
+    @StateObject private var notifications = NotificationsStore()
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -14,6 +15,7 @@ struct LifeOSApp: App {
                 .environmentObject(app)
                 .environmentObject(reminders)
                 .environmentObject(health)
+                .environmentObject(notifications)
                 .preferredColorScheme(app.colorScheme)
                 .tint(T.accent)
         }
@@ -54,10 +56,14 @@ struct RootView: View {
     @EnvironmentObject var app: AppState
     @EnvironmentObject var reminders: RemindersStore
     @EnvironmentObject var health: HealthStore
+    @EnvironmentObject var notifications: NotificationsStore
     var body: some View {
         if app.loggedIn {
             tabs
-                .task { await app.refresh() }
+                .task {
+                    await app.refresh()
+                    await notifications.reschedule(verifiche: app.data["didupVerifiche"].array)
+                }
                 .task { await reminders.start() }
                 .task { await health.start() }
         } else {
