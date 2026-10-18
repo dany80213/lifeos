@@ -33,6 +33,9 @@ const EMPTY_STORE = {
   // in Finanze.dc.html itself (fictional banks, a fake mortgage, invented
   // crypto holdings). Real, empty by default, edited from the page.
   accounts: [], liabilities: [], assets: [],
+  // The user's own movement categories, on top of the built-in ones in
+  // lifeos-finance-catalog.mjs: { id, name, kind: 'spesa'|'entrata', emoji }.
+  categories: [],
   // Home page's habit checklist — previously 5 hardcoded demo rows in
   // LifeOS.dc.html, always at a fixed "done" state. Real and empty by
   // default; the list itself is edited from Profilo, "done" is per-day
@@ -133,17 +136,38 @@ function withStore(mutate) {
 
 export const getStore = () => load()
 
-export const addTransaction = ({ tx_type, amount, category, account }) =>
+import { findBank, findCategory } from './lifeos-finance-catalog.mjs'
+
+/**
+ * `date` may be 'YYYY-MM-DD' (the day the movement happened — stored at local
+ * noon so no timezone shifts it onto another day), a full ISO string, or
+ * missing (now). A future or unreadable date falls back to now.
+ */
+function movementDate(date) {
+  if (typeof date === 'string' && date.trim()) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim())
+    const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0) : new Date(date)
+    if (!Number.isNaN(d.getTime()) && d.getTime() <= Date.now() + 86_400_000) return d.toISOString()
+  }
+  return new Date().toISOString()
+}
+
+export const addTransaction = ({ tx_type, amount, category, account, description, date }) =>
   withStore((store) => {
+    const type = tx_type === 'entrata' ? 'entrata' : 'spesa'
+    // A name that matches a known category is stored with its canonical spelling;
+    // anything else is kept exactly as typed (the chat sometimes invents one).
+    const known = findCategory(category, store.categories)
     const record = {
       id: Date.now(),
-      type: tx_type === 'entrata' ? 'entrata' : 'spesa',
+      type,
       amount: Number(amount) || 0,
-      category: category || 'Altro',
-      // Only the manual Finanze form has a real account to give; the chat
-      // path (add_transaction in lifeos-tools.mjs) never asks for one.
-      account: account || '',
-      date: new Date().toISOString(),
+      category: known?.name || String(category || '').trim() || (type === 'entrata' ? 'Altre entrate' : 'Altro'),
+      // The manual Finanze form and the chat can both name an account now;
+      // empty means "none" (older records, or a movement with no account).
+      account: String(account || '').trim(),
+      description: String(description || '').trim().slice(0, 200),
+      date: movementDate(date),
     }
     store.transactions.push(record)
     return record
@@ -306,16 +330,39 @@ function collectionOps(key, makeRecord) {
   return { add, update, remove }
 }
 
-const accountOps = collectionOps('accounts', ({ name, inst, type, balance }) => ({
+const accountOps = collectionOps('accounts', ({ name, inst, type, balance, bank }) => {
+  // `bank` is a catalogue id (intesa, revolut…); the readable name goes in
+  // `inst` as before, so older clients keep showing something sensible.
+  const b = findBank(bank)
+  return {
   id: Date.now(),
-  name: name || 'Conto',
-  inst: inst || '',
+  bank: b?.id || '',
+  name: name || b?.name || 'Conto',
+  inst: inst || b?.name || '',
   type: ['banche', 'broker', 'crypto'].includes(type) ? type : 'banche',
   balance: Number(balance) || 0,
-}))
+  }
+})
 export const addAccount = accountOps.add
 export const updateAccount = accountOps.update
 export const removeAccount = accountOps.remove
+
+/** A new custom category; refuses duplicates of built-in or existing names. */
+export const addCategory = ({ name, kind, emoji }) =>
+  withStore((store) => {
+    const clean = String(name ?? '').trim().slice(0, 40)
+    if (!clean) return { error: 'Serve un nome.' }
+    if (findCategory(clean, store.categories)) return { error: 'Esiste già una categoria con questo nome.' }
+    const record = { id: Date.now(), name: clean, kind: kind === 'entrata' ? 'entrata' : 'spesa', emoji: String(emoji ?? '').trim().slice(0, 4) }
+    store.categories.push(record)
+    return record
+  })
+export const removeCategory = (id) =>
+  withStore((store) => {
+    const before = store.categories.length
+    store.categories = store.categories.filter((c) => c.id !== id)
+    return { removed: store.categories.length < before }
+  })
 
 const habitOps = collectionOps('habits', ({ name, days }) => ({
   id: Date.now(),

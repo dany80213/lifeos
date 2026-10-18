@@ -12,7 +12,8 @@
  * text ("aggiungi un evento, controlla il mercato, registra una spesa…").
  */
 
-import { addMeal, addReminder, addTransaction } from './lifeos-store.mjs'
+import { addMeal, addReminder, addTransaction, getStore } from './lifeos-store.mjs'
+import { buildCatalog } from './lifeos-finance-catalog.mjs'
 import { createEvent, createEventInCalendar, listCalendarNames } from './lifeos-caldav.mjs'
 import { parseItalianWhen } from './lifeos-datetime.mjs'
 
@@ -44,6 +45,21 @@ export async function refreshCalendarNames() {
     console.error('[lifeos-tools] calendar list failed:', err?.message ?? err)
   }
 }
+// Accounts and custom categories the model may name, read from the store before
+// each request (cheap: it is a local file) so a new one is usable at once.
+let accountNames = []
+let customCategories = []
+export async function refreshFinanceContext() {
+  try {
+    const store = await getStore()
+    accountNames = (store.accounts ?? []).map((a) => a.name).filter(Boolean)
+    customCategories = store.categories ?? []
+  } catch (err) {
+    console.error('[lifeos-tools] finance context failed:', err?.message ?? err)
+  }
+}
+const matchAccount = (name) => (isBlank(name) ? '' : accountNames.find((a) => a.toLowerCase() === String(name).trim().toLowerCase()) ?? '')
+
 const matchCalendar = (name) => (isBlank(name) ? null : calendarNames.find((c) => c.toLowerCase() === String(name).trim().toLowerCase()) ?? null)
 
 const TOOLS = {
@@ -58,15 +74,24 @@ const TOOLS = {
           properties: {
             tx_type: { type: 'string', enum: ['spesa', 'entrata'] },
             amount: { type: 'number' },
-            category: { type: 'string' },
+            category: { type: 'string', description: 'Categoria. Usa una di quelle elencate nel prompt se ce n\'è una adatta; solo se nessuna va bene, proponi un nome breve nuovo.' },
+            description: { type: 'string', description: 'Descrizione breve di cosa è (es. "Spesa Esselunga", "Pizza con Anna", "Rata telefono"). Vuoto se la frase non dice nulla di più della categoria.' },
+            account: { type: 'string', description: 'Nome del conto, solo se l\'utente lo indica o è inequivocabile; deve essere uno dei conti elencati. Altrimenti vuoto.' },
+            date: { type: 'string', description: 'Giorno del movimento, formato "YYYY-MM-DD", solo se non è oggi (es. "ieri", "il 12"). Vuoto = oggi.' },
           },
           required: ['tx_type', 'amount', 'category'],
         },
       },
     },
     validate: (a) => Number(a.amount) > 0 && !isBlank(a.category) && ['spesa', 'entrata'].includes(a.tx_type),
-    run: addTransaction,
-    confirm: (r) => `Registrata ${r.type === 'entrata' ? "un'entrata" : 'una spesa'} di €${r.amount} — ${r.category}.`,
+    run: (a) => addTransaction({ ...a, account: matchAccount(a.account) }),
+    confirm: (r) => {
+      const day = new Date(r.date)
+      const today = new Date()
+      const dayLabel = day.toDateString() === today.toDateString() ? '' : ` del ${day.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`
+      return `Registrata ${r.type === 'entrata' ? "un'entrata" : 'una spesa'}${dayLabel} di €${r.amount} — ${r.category}` +
+        `${r.description ? ` («${r.description}»)` : ''}${r.account ? `, conto ${r.account}` : ''}.`
+    },
   },
   add_meal: {
     def: {
@@ -228,6 +253,13 @@ const SECTION_TOOLS = {
   home: ['add_transaction', 'add_meal', 'add_event', 'add_reminder'],
 }
 
+function financePrompt() {
+  const { categories } = buildCatalog(customCategories)
+  const by = (kind) => categories.filter((c) => c.kind === kind).map((c) => c.name).join(', ')
+  return ` Categorie di spesa: ${by('spesa')}. Categorie di entrata: ${by('entrata')}.` +
+    (accountNames.length ? ` Conti disponibili: ${accountNames.join(', ')}.` : '')
+}
+
 export function toolsForSection(section) {
   return (SECTION_TOOLS[section] ?? []).map((name) => {
     const def = TOOLS[name].def
@@ -284,6 +316,7 @@ export function systemPromptFor(section) {
   const todayFull = now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   return `${persona}${toolRules} Oggi è ${todayFull}, sono circa le ${time} (fuso orario Europe/Rome).` +
     (SECTION_TOOLS[section]?.length ? ` Calendario dei prossimi giorni: ${days.join(', ')}.` : '') +
+    (SECTION_TOOLS[section]?.some((t) => t === 'add_transaction') ? financePrompt() : '') +
     (SECTION_TOOLS[section]?.length && calendarNames.length ? ` Calendari Apple disponibili: ${calendarNames.join(', ')} (predefinito: Calendar; «Verifiche» è riservato alle verifiche scolastiche).` : '')
 }
 

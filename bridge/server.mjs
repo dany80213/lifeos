@@ -54,17 +54,18 @@ import { getBriefing } from './lifeos-briefing.mjs'
 import { currentWeekSummary, formatWeekSummary, recentWeekSummaries } from './lifeos-review.mjs'
 import { lifeosCronServer } from './lifeos-cron.mjs'
 import {
-  addAccount, addAsset, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
+  addAccount, addAsset, addCategory, removeCategory, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
   clearFatsecretAuth, completeReminder, getFatsecretAuth, getFitnessTrend, getSettings, getStore, importFatsecretEntries,
   markMealSynced, setFatsecretAuth, setFitnessTrend, setHealthSnapshot, summarizeMealsForToday, updateSettings,
   removeAccount, removeAsset, removeAssetLot, removeHabit, removeLiability, removeRecurringBuy, removeTransaction, removeWorkout,
   updateAccount, updateHabit, updateLiability, updateRecurringBuy, updateWorkout,
 } from './lifeos-store.mjs'
+import { buildCatalog } from './lifeos-finance-catalog.mjs'
 import { lookupDetails, lookupHistory, lookupPrices } from './market-prices.mjs'
 import { startRecurringBuyScheduler } from './recurring-buys.mjs'
 import { listCalendarColors, listCalendarNames, listEvents } from './lifeos-caldav.mjs'
 import { fetchCompiti, fetchVerifiche, startVerificheSyncScheduler } from './lifeos-didup.mjs'
-import { ActionValidationError, refreshCalendarNames, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
+import { ActionValidationError, refreshCalendarNames, refreshFinanceContext, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
 import { FatSecretError, getFoodDetail, searchFoods } from './lifeos-fatsecret.mjs'
 import {
   authorizeUrl, createFoodEntry, FatSecretDiaryError, getAccessToken, getFoodEntries,
@@ -1597,6 +1598,7 @@ const handleRequest = async (req, res) => {
       liabilities: { add: addLiability, update: updateLiability, remove: removeLiability },
       assets: { add: addAsset, remove: removeAsset },
       transactions: { add: addTransaction, remove: removeTransaction },
+      categories: { add: addCategory, remove: removeCategory },
       recurringBuys: { add: addRecurringBuy, update: updateRecurringBuy, remove: removeRecurringBuy },
       habits: { add: addHabit, update: updateHabit, remove: removeHabit },
       workouts: { add: addWorkout, update: updateWorkout, remove: removeWorkout },
@@ -1880,7 +1882,7 @@ const handleRequest = async (req, res) => {
     const { fatsecretAuth: _fatsecretAuthOmitted, ...storeForClient } = store
 
     res.writeHead(200, { ...cors, 'content-type': 'application/json' })
-    return res.end(JSON.stringify({ ...storeForClient, assets, events, latestHealth, calendarNames, calendarColors, marketPulse, didupVerifiche, didupCompiti, nutritionToday, automations, reviewWeek, fatsecretConnected: !!fatsecretAuth }))
+    return res.end(JSON.stringify({ ...storeForClient, financeCatalog: buildCatalog(store.categories), assets, events, latestHealth, calendarNames, calendarColors, marketPulse, didupVerifiche, didupCompiti, nutritionToday, automations, reviewWeek, fatsecretConnected: !!fatsecretAuth }))
   }
 
   // --- LifeOS pages, session-gated ----------------------------------------
@@ -2066,6 +2068,7 @@ wss.on('connection', (socket) => {
     }
     try {
       await refreshCalendarNames()
+      await refreshFinanceContext()
       const tools = toolsForSection(section)
       const messages = [
         { role: 'system', content: systemPromptFor(section) },

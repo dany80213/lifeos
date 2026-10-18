@@ -171,7 +171,7 @@
           <div style="{{ styles.accountList }}">
             <sc-for list="{{ accounts }}" as="acc" hint-placeholder-count="4">
               <div style="{{ acc.rowStyle }}">
-                <div style="{{ acc.iconStyle }}">{{ acc.mono }}</div>
+                <div style="{{ acc.iconStyle }}">{{ acc.mono }}<img data-logo="1" src="{{ acc.logoUrl }}" style="{{ acc.logoStyle }}"></img></div>
                 <div style="{{ styles.accountInfo }}">
                   <div style="{{ styles.accountName }}">{{ acc.name }}</div>
                   <div style="{{ styles.accountInst }}">{{ acc.inst }}</div>
@@ -181,9 +181,22 @@
               </div>
             </sc-for>
           </div>
+          <div style="{{ styles.bankPickerRow }}">
+            <sc-for list="{{ bankPicker }}" as="bk" hint-placeholder-count="8">
+              <div style="{{ bk.style }}" onClick="{{ bk.select }}" title="{{ bk.name }}">
+                <div style="{{ bk.iconStyle }}">{{ bk.mono }}<img data-logo="1" src="{{ bk.logoUrl }}" style="{{ bk.logoStyle }}"></img></div>
+                <div style="{{ styles.bankPickerName }}">{{ bk.shortName }}</div>
+              </div>
+            </sc-for>
+          </div>
           <div style="{{ styles.financeFormRow5 }}" class="lo-grid">
             <input style="{{ styles.txInput }}" placeholder="Nome conto" value="{{ newAccountForm.name }}" onChange="{{ newAccountForm.onName }}"></input>
-            <input style="{{ styles.txInput }}" placeholder="Istituto" value="{{ newAccountForm.inst }}" onChange="{{ newAccountForm.onInst }}"></input>
+            <select style="{{ styles.txSelect }}" value="{{ newAccountForm.bank }}" onChange="{{ newAccountForm.onBank }}">
+              <option value="">Banca…</option>
+              <sc-for list="{{ newAccountForm.bankOptions }}" as="bo" hint-placeholder-count="8">
+                <option value="{{ bo.id }}">{{ bo.name }}</option>
+              </sc-for>
+            </select>
             <select style="{{ styles.txSelect }}" value="{{ newAccountForm.type }}" onChange="{{ newAccountForm.onType }}">
               <option value="banche">Banche</option>
               <option value="broker">Broker</option>
@@ -273,23 +286,29 @@
             <input style="{{ styles.txInput }}" type="number" placeholder="Importo €" value="{{ txForm.amount }}" onChange="{{ txForm.onAmountChange }}"></input>
             <select style="{{ styles.txSelect }}" value="{{ txForm.category }}" onChange="{{ txForm.onCategoryChange }}">
               <sc-for list="{{ txForm.categoryOptions }}" as="co" hint-placeholder-count="4">
-                <option value="{{ co }}">{{ co }}</option>
+                <option value="{{ co.value }}">{{ co.label }}</option>
               </sc-for>
             </select>
             <select style="{{ styles.txSelect }}" value="{{ txForm.account }}" onChange="{{ txForm.onAccountChange }}">
+              <option value="">Nessun conto</option>
               <sc-for list="{{ txForm.accountOptions }}" as="ao" hint-placeholder-count="5">
                 <option value="{{ ao }}">{{ ao }}</option>
               </sc-for>
             </select>
+          </div>
+          <div style="{{ styles.txFormRow2 }}" class="lo-grid">
+            <input style="{{ styles.txInput }}" placeholder="Descrizione (es. Spesa Esselunga)" value="{{ txForm.description }}" onChange="{{ txForm.onDescriptionChange }}"></input>
+            <input style="{{ styles.txInput }}" type="date" max="{{ txForm.maxDate }}" value="{{ txForm.date }}" onChange="{{ txForm.onDateChange }}"></input>
+            <div style="{{ txForm.deleteCategoryStyle }}" onClick="{{ txForm.deleteCategory }}" title="Elimina questa categoria personalizzata">🗑</div>
             <div style="{{ styles.txAddBtn }}" onClick="{{ txForm.add }}">+</div>
           </div>
           <div style="{{ styles.txList }}">
             <sc-for list="{{ transactions }}" as="tx" hint-placeholder-count="3">
               <div style="{{ styles.txRow }}">
-                <div style="{{ tx.dotStyle }}"></div>
+                <div style="{{ styles.txEmoji }}">{{ tx.emoji }}</div>
                 <div style="{{ styles.txInfo }}">
-                  <div style="{{ styles.txCategory }}">{{ tx.category }}</div>
-                  <div style="{{ styles.txMeta }}">{{ tx.account }} · {{ tx.date }}</div>
+                  <div style="{{ styles.txCategory }}">{{ tx.title }}</div>
+                  <div style="{{ styles.txMeta }}">{{ tx.meta }}</div>
                 </div>
                 <div style="{{ tx.amountStyle }}">{{ tx.amountLabel }}</div>
                 <div style="{{ styles.rowDeleteBtn }}" onClick="{{ tx.remove }}" title="Elimina">×</div>
@@ -654,12 +673,15 @@ class Component extends DCLogic {
     txType: 'spesa',
     txAmount: '',
     txCategory: 'Alimentari',
-    txAccount: 'Conto corrente',
+    txAccount: '',
+    txDescription: '',
+    txDate: '',   // yyyy-mm-dd; empty = today
+    catalog: { banks: [], categories: [] },   // from the bridge: financeCatalog
 
     // Real, empty by default — see lifeos-store.mjs. Replaces what used to
     // be fictional hardcoded banks/holdings/loans baked into this file.
     accounts: [], liabilities: [], assets: [],
-    newAccount: { name: '', inst: '', type: 'banche', balance: '' },
+    newAccount: { name: '', bank: '', inst: '', type: 'banche', balance: '' },
     newLiability: { name: '', original: '', resid: '', nextDate: '' },
     newAsset: { name: '', symbol: '', assetClass: 'crypto', qty: '', purchaseDate: '' },
     newAssetError: null,
@@ -673,29 +695,60 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    document.addEventListener('error', this.hideBrokenLogo, true);
     window.__lifeosCollapseChatBar = () => this.setState({ chatBarOpen: false }); // reset by the app on tab change
     window.LifeOSJarvis.fetchData().then(data => {
       const patch = {
         accounts: data.accounts || [], liabilities: data.liabilities || [], assets: data.assets || [],
         recurringBuys: data.recurringBuys || [],
         marketPulse: data.marketPulse || {},
-        transactions: (data.transactions || []).map(r => ({
-          id: r.id, type: r.type, amount: r.amount, category: r.category, account: r.account || 'Assistente IA',
-          date: new Date(r.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
-        })).reverse(),
+        catalog: data.financeCatalog || { banks: [], categories: [] },
+        transactions: (data.transactions || []).map(r => this.txView(r, (data.financeCatalog || { categories: [] }).categories)).sort((a, b) => b.ts - a.ts),
         realTransactions: data.transactions || [],
       };
       this.setState(patch);
     }).catch(() => {});
   }
-  componentWillUnmount() { clearInterval(this._timer); delete window.__lifeosCollapseChatBar; }
+  componentWillUnmount() { document.removeEventListener('error', this.hideBrokenLogo, true); clearInterval(this._timer); delete window.__lifeosCollapseChatBar; }
 
   setNewAccountField = (field, v) => this.setState(s => ({ newAccount: { ...s.newAccount, [field]: v } }));
+  // Picking a bank fills in the account's name (unless something else was typed) and its institution.
+  pickBank = (id) => this.setState(s => {
+    const prev = s.catalog.banks.find(b => b.id === s.newAccount.bank);
+    const next = s.catalog.banks.find(b => b.id === id);
+    const name = (!s.newAccount.name || (prev && s.newAccount.name === prev.name)) && next ? next.name : s.newAccount.name;
+    return { newAccount: { ...s.newAccount, bank: id, inst: next ? next.name : '', name } };
+  });
+
+  // ---- bank logos: the site's own icon, over a coloured monogram that stays if it can't load.
+  bankFor = (a) => {
+    const banks = this.state.catalog.banks;
+    const byId = a.bank && banks.find(b => b.id === a.bank);
+    if (byId) return byId;
+    const names = [a.inst, a.name].filter(Boolean).map(x => x.toLowerCase());
+    return banks.find(b => names.includes(b.name.toLowerCase())) || null;
+  };
+  logoUrl = (b) => (b && b.domain ? 'https://www.google.com/s2/favicons?domain=' + b.domain + '&sz=128' : '');
+  // A logo that fails to load just disappears, leaving the coloured monogram under it. (`error` doesn't bubble, hence capture.)
+  hideBrokenLogo = (e) => { if (e.target && e.target.dataset && e.target.dataset.logo) e.target.style.display = 'none'; };
+  logoImgStyle = (b) => ({ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', padding: 6, boxSizing: 'border-box', background: '#fff', borderRadius: '50%', display: b && b.domain ? 'block' : 'none' });
+
+  // One transaction as the list shows it: description (or category) as the title, the rest as the line below.
+  txView = (r, categories = this.state.catalog.categories) => {
+    const cat = categories.find(c => c.name.toLowerCase() === String(r.category || '').toLowerCase());
+    const date = new Date(r.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+    return {
+      id: r.id, type: r.type, amount: r.amount, category: r.category, account: r.account || '', description: r.description || '',
+      emoji: cat ? cat.emoji : '🏷️', date, ts: new Date(r.date).getTime(),
+      title: r.description || r.category,
+      meta: [r.description ? r.category : null, r.account || null, date].filter(Boolean).join(' · '),
+    };
+  };
   addAccountRow = () => {
-    const { name, inst, type, balance } = this.state.newAccount;
+    const { name, bank, inst, type, balance } = this.state.newAccount;
     if (!name.trim()) return;
-    window.LifeOSJarvis.financeOp('accounts', 'add', { data: { name, inst, type, balance: parseFloat(balance) || 0 } })
-      .then(record => this.setState(s => ({ accounts: [...s.accounts, record], newAccount: { name: '', inst: '', type: 'banche', balance: '' } })))
+    window.LifeOSJarvis.financeOp('accounts', 'add', { data: { name, bank, inst, type, balance: parseFloat(balance) || 0 } })
+      .then(record => this.setState(s => ({ accounts: [...s.accounts, record], newAccount: { name: '', bank: '', inst: '', type: 'banche', balance: '' } })))
       .catch(() => {});
   };
   removeAccountRow = (id) => {
@@ -809,10 +862,7 @@ class Component extends DCLogic {
       this.setState(s => ({
         lastReply: reply.text || '...',
         transactions: reply.action === 'add_transaction' && reply.data
-          ? [{
-              id: reply.data.id, type: reply.data.type, amount: reply.data.amount, category: reply.data.category,
-              account: 'Assistente IA', date: new Date(reply.data.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
-            }, ...s.transactions]
+          ? [this.txView(reply.data), ...s.transactions]
           : s.transactions,
       }));
     }).catch(err => {
@@ -822,24 +872,43 @@ class Component extends DCLogic {
 
   spesaCategories = ['Alimentari', 'Trasporti', 'Casa', 'Svago', 'Salute', 'Shopping', 'Altro'];
   entrataCategories = ['Stipendio', 'Freelance', 'Regalo', 'Altro'];
-  accountNames = ['Conto corrente', 'Conto risparmio', 'Carta di credito', 'Broker', 'Wallet crypto'];
+  // The catalogue (built-in + the user's own) from the bridge; the fixed lists above only cover an offline start.
+  categoriesFor = (type) => {
+    const cats = this.state.catalog.categories.filter(c => c.kind === type);
+    return cats.length ? cats : (type === 'spesa' ? this.spesaCategories : this.entrataCategories).map(name => ({ name, kind: type, custom: false }));
+  };
 
-  setTxType = (type) => this.setState({ txType: type, txCategory: (type === 'spesa' ? this.spesaCategories : this.entrataCategories)[0] });
+  setTxType = (type) => this.setState(s => ({ txType: type, txCategory: this.categoriesFor(type)[0].name }));
   setTxAmount = (v) => this.setState({ txAmount: v });
-  setTxCategory = (v) => this.setState({ txCategory: v });
+  setTxCategory = (v) => {
+    if (v !== '__new__') return this.setState({ txCategory: v });
+    const name = (window.prompt('Nome della nuova categoria') || '').trim();
+    if (!name) return;
+    const kind = this.state.txType;
+    window.LifeOSJarvis.financeOp('categories', 'add', { data: { name, kind, emoji: '' } }).then(rec => {
+      if (rec.error) return window.alert(rec.error);
+      this.setState(s => ({
+        catalog: { ...s.catalog, categories: [...s.catalog.categories, { id: rec.id, name: rec.name, kind: rec.kind, emoji: rec.emoji || '🏷️', custom: true }] },
+        txCategory: rec.name,
+      }));
+    }).catch(() => {});
+  };
+  deleteTxCategory = () => {
+    const cat = this.state.catalog.categories.find(c => c.name === this.state.txCategory && c.custom);
+    if (!cat || !window.confirm('Eliminare la categoria «' + cat.name + '»? I movimenti già registrati la mantengono.')) return;
+    window.LifeOSJarvis.financeOp('categories', 'remove', { id: cat.id }).catch(() => {});
+    this.setState(s => ({ catalog: { ...s.catalog, categories: s.catalog.categories.filter(c => c.id !== cat.id) }, txCategory: this.categoriesFor(s.txType).filter(c => c.id !== cat.id)[0].name }));
+  };
   setTxAccount = (v) => this.setState({ txAccount: v });
   addTransaction = () => {
     const amount = parseFloat(this.state.txAmount);
     if (!amount || amount <= 0) return;
-    const { txType, txCategory, txAccount } = this.state;
-    window.LifeOSJarvis.financeOp('transactions', 'add', { data: { tx_type: txType, amount, category: txCategory, account: txAccount } })
+    const { txType, txCategory, txAccount, txDescription, txDate } = this.state;
+    window.LifeOSJarvis.financeOp('transactions', 'add', { data: { tx_type: txType, amount, category: txCategory, account: txAccount, description: txDescription, date: txDate } })
       .then(record => this.setState(s => ({
-        transactions: [{
-          id: record.id, type: record.type, amount: record.amount, category: record.category, account: record.account || txAccount,
-          date: new Date(record.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }),
-        }, ...s.transactions],
+        transactions: [this.txView(record), ...s.transactions].sort((a, b) => b.ts - a.ts),
         realTransactions: [...s.realTransactions, record],
-        txAmount: '',
+        txAmount: '', txDescription: '',
       })))
       .catch(() => {});
   };
@@ -1015,7 +1084,11 @@ class Component extends DCLogic {
       aiInsightExtra: { marginTop: 8, fontSize: 13, lineHeight: 1.5, color: t.text2 },
       aiInsightExpand: { fontSize: 12.5, fontWeight: 700, color: t.accent, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' },
 
-      txFormRow: { display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.3fr auto', gap: 10 },
+      txFormRow: { display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.3fr', gap: 10 },
+      txFormRow2: { display: 'grid', gridTemplateColumns: '2fr 1fr auto auto', gap: 10, marginTop: 8, alignItems: 'center' },
+      txEmoji: { width: 34, height: 34, borderRadius: '50%', background: t.glassBgSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 },
+      bankPickerRow: { display: 'flex', gap: 10, overflowX: 'auto', padding: '10px 2px 6px', scrollbarWidth: 'thin' },
+      bankPickerName: { fontSize: 10.5, color: t.text3, marginTop: 4, textAlign: 'center', maxWidth: 62, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
       financeFormRow5: { display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.9fr 0.9fr auto', gap: 8, marginTop: 8 },
       financeFormRow6: { display: 'grid', gridTemplateColumns: '1.1fr 0.9fr 0.7fr 0.7fr 1fr auto', gap: 8, marginTop: 8 },
       financeFormError: { fontSize: 12, color: t.red, marginTop: 6 },
@@ -1089,12 +1162,21 @@ class Component extends DCLogic {
     const accounts = accountData
       .filter(a => s.accountFilter === 'tutti' || a.type === s.accountFilter)
       .map(a => ({
-        name: a.name, inst: a.inst, mono: (a.inst || a.name).slice(0, 2).toUpperCase(),
+        name: a.name, inst: a.inst === a.name ? '' : a.inst, mono: (this.bankFor(a)?.initials || (a.inst || a.name).slice(0, 2)).toUpperCase(),
+        logoUrl: this.logoUrl(this.bankFor(a)), logoStyle: this.logoImgStyle(this.bankFor(a)),
         balanceLabel: fmtEur(a.balance),
         rowStyle: { display: 'flex', alignItems: 'center', gap: 14, padding: '11px 8px', borderRadius: 12, background: t.glassBgSoft },
-        iconStyle: { width: 40, height: 40, borderRadius: '50%', background: `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 },
+        iconStyle: { position: 'relative', overflow: 'hidden', width: 40, height: 40, borderRadius: '50%', background: this.bankFor(a)?.color || `linear-gradient(135deg, ${t.accent}, oklch(60% 0.18 250))`, color: this.bankFor(a)?.darkText ? '#111' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 },
         remove: () => this.removeAccountRow(a.id),
       }));
+
+    // The row of bank logos above the "add account" form: one tap picks the bank.
+    const bankPicker = s.catalog.banks.map(b => ({
+      name: b.name, shortName: b.name.split(' ')[0], mono: b.initials, logoUrl: this.logoUrl(b), logoStyle: this.logoImgStyle(b),
+      iconStyle: { position: 'relative', overflow: 'hidden', width: 44, height: 44, borderRadius: '50%', background: b.color, color: b.darkText ? '#111' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, border: s.newAccount.bank === b.id ? `2px solid ${t.accent}` : '2px solid transparent', boxSizing: 'border-box' },
+      style: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0, opacity: !s.newAccount.bank || s.newAccount.bank === b.id ? 1 : 0.55 },
+      select: () => this.pickBank(s.newAccount.bank === b.id ? '' : b.id),
+    }));
 
     // A flat two-point line — honest in the absence of any real tracked
     // history, unlike a fabricated up-and-to-the-right series.
@@ -1411,15 +1493,24 @@ class Component extends DCLogic {
       selectSpesa: () => this.setTxType('spesa'), selectEntrata: () => this.setTxType('entrata'),
       amount: s.txAmount, onAmountChange: (e) => this.setTxAmount(e.target.value),
       category: s.txCategory, onCategoryChange: (e) => this.setTxCategory(e.target.value),
-      categoryOptions: s.txType === 'spesa' ? this.spesaCategories : this.entrataCategories,
+      categoryOptions: [
+        ...this.categoriesFor(s.txType).map(c => ({ value: c.name, label: (c.emoji ? c.emoji + ' ' : '') + c.name })),
+        { value: '__new__', label: '＋ Nuova categoria…' },
+      ],
       account: s.txAccount, onAccountChange: (e) => this.setTxAccount(e.target.value),
-      accountOptions: this.accountNames,
+      accountOptions: s.accounts.map(a => a.name),
+      description: s.txDescription, onDescriptionChange: (e) => this.setState({ txDescription: e.target.value }),
+      date: s.txDate || new Date().toISOString().slice(0, 10), onDateChange: (e) => this.setState({ txDate: e.target.value }),
+      maxDate: new Date().toISOString().slice(0, 10),
+      // Only the user's own categories can be removed; the button is invisible for built-in ones.
+      deleteCategoryStyle: { cursor: 'pointer', fontSize: 16, opacity: s.catalog.categories.some(c => c.name === s.txCategory && c.custom) ? 0.8 : 0, pointerEvents: s.catalog.categories.some(c => c.name === s.txCategory && c.custom) ? 'auto' : 'none' },
+      deleteCategory: this.deleteTxCategory,
       add: this.addTransaction,
     };
-    const transactions = s.transactions.slice(0, 6).map(tx => {
+    const transactions = s.transactions.slice(0, 8).map(tx => {
       const positive = tx.type === 'entrata';
       return {
-        category: tx.category, account: tx.account, date: tx.date,
+        title: tx.title, meta: tx.meta, emoji: tx.emoji,
         dotStyle: { width: 8, height: 8, borderRadius: '50%', background: positive ? t.green : t.red, flexShrink: 0 },
         amountStyle: { fontSize: 14, fontWeight: 700, color: positive ? t.green : t.red },
         amountLabel: (positive ? '+' : '-') + fmtEur(tx.amount).replace('€ ', '€ '),
@@ -1452,7 +1543,8 @@ class Component extends DCLogic {
 
     const newAccountForm = {
       name: s.newAccount.name, onName: (e) => this.setNewAccountField('name', e.target.value),
-      inst: s.newAccount.inst, onInst: (e) => this.setNewAccountField('inst', e.target.value),
+      bank: s.newAccount.bank, onBank: (e) => this.pickBank(e.target.value),
+      bankOptions: s.catalog.banks.map(b => ({ id: b.id, name: b.name })),
       type: s.newAccount.type, onType: (e) => this.setNewAccountField('type', e.target.value),
       balance: s.newAccount.balance, onBalance: (e) => this.setNewAccountField('balance', e.target.value),
       add: this.addAccountRow,
@@ -1498,7 +1590,7 @@ class Component extends DCLogic {
 
     return {
       styles, timeStr, dateStr, btc, eunl, toggleTheme: this.toggleTheme,
-      txForm, transactions, monthlyChart, monthlySummary, currentMonthLabel,
+      txForm, bankPicker, transactions, monthlyChart, monthlySummary, currentMonthLabel,
       isPanoramica, isInvestimenti, tabPill,
       hero, chart, periodPill,
       accountFilters, accounts, liquidity, invested, liabilities,
