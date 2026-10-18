@@ -27,6 +27,14 @@ python3 scripts/bump-version.py patch --fixed "Cosa è stato corretto" --changed
 
 <!-- nuove versioni sotto questa riga -->
 
+## 1.14.0 — 2026-10-18
+
+**Aggiunto**
+- Finanze: categorie predefinite per spese ed entrate e possibilità di crearne di nuove
+- Finanze: conti con il logo delle principali banche
+- Finanze: ogni movimento ha descrizione, data scelta, categoria e conto, con il logo della banca nella lista
+
+
 ## 1.13.0 — 2026-10-15
 
 **Aggiunto**

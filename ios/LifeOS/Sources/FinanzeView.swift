@@ -46,7 +46,7 @@ struct FinanzeView: View {
             case .account: AccountForm()
             case .asset: AssetForm()
             case .liability: LiabilityForm()
-            case .tx: TxForm(accounts: accounts.map { $0["name"].str })
+            case .tx: TxForm(accounts: accounts)
             case .recurring: RecurringForm()
             }
         }
@@ -96,10 +96,11 @@ struct FinanzeView: View {
             if accounts.isEmpty { empty("Nessun conto.") }
             ForEach(accounts.indices, id: \.self) { i in
                 let a = accounts[i]
-                HStack {
+                HStack(spacing: 12) {
+                    BankLogo(bank: FinanceCatalog.bank(for: a, in: app.data), fallbackName: a["name"].str, size: 38)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(a["name"].str).font(.subheadline.weight(.semibold))
-                        Text("\(a["inst"].str.isEmpty ? "" : a["inst"].str + " · ")\(a["type"].str)").font(.caption).foregroundStyle(T.text3)
+                        Text("\(a["inst"].str.isEmpty || a["inst"].str == a["name"].str ? "" : a["inst"].str + " · ")\(a["type"].str)").font(.caption).foregroundStyle(T.text3)
                     }
                     Spacer()
                     Text(Fmt.eur(a["balance"].num)).font(.subheadline.weight(.semibold)).monospacedDigit()
@@ -188,11 +189,18 @@ struct FinanzeView: View {
             ForEach(txs.prefix(12).indices, id: \.self) { i in
                 let t = txs[i]
                 let isIn = t["type"].str == "entrata"
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(t["category"].str).font(.subheadline.weight(.semibold))
-                        Text([Fmt.date(t["date"].str).map { Fmt.it($0, "d MMM HH:mm") }, t["account"].string.flatMap { $0.isEmpty ? nil : $0 }]
-                            .compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(T.text3)
+                let cat = FinanceCatalog.category(t["category"].str, in: app.data)
+                let acc = accounts.first { $0["name"].str == t["account"].str }
+                let desc = t["description"].str
+                HStack(spacing: 12) {
+                    CategoryBadge(emoji: cat?["emoji"].str ?? "", size: 38)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(desc.isEmpty ? t["category"].str : desc).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        HStack(spacing: 5) {
+                            if let acc { BankLogo(bank: FinanceCatalog.bank(for: acc, in: app.data), fallbackName: acc["name"].str, size: 14) }
+                            Text(([desc.isEmpty ? nil : t["category"].str] + [t["account"].string.flatMap { $0.isEmpty ? nil : $0 }, Fmt.date(t["date"].str).map { Fmt.it($0, "d MMM yyyy") }])
+                                .compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(T.text3).lineLimit(1)
+                        }
                     }
                     Spacer()
                     Text("\(isIn ? "+" : "−")\(Fmt.eur(t["amount"].num, decimals: 2))")
@@ -320,22 +328,37 @@ struct FormShell<Content: View>: View {
 struct AccountForm: View {
     @EnvironmentObject var app: AppState
     @State private var name = ""
-    @State private var inst = ""
+    @State private var bank = ""
     @State private var balance = ""
     @State private var type = "banche"
+    @State private var picking = false
+    private var bankJSON: JSON? { FinanceCatalog.banks(app.data).first { $0["id"].str == bank } }
     var body: some View {
         FormShell(title: "Nuovo conto", canSave: !name.isEmpty) {
-            let r = await app.financeOp("accounts", "add", data: ["name": .string(name), "inst": .string(inst), "type": .string(type), "balance": .number(Fmt.parse(balance))])
+            let r = await app.financeOp("accounts", "add", data: ["name": .string(name), "bank": .string(bank), "inst": .string(bankJSON?["name"].str ?? ""), "type": .string(type), "balance": .number(Fmt.parse(balance))])
             return r != nil
         } content: {
-            Field(placeholder: "Nome", text: $name)
-            Field(placeholder: "Istituto", text: $inst)
+            Button { picking = true } label: {
+                HStack(spacing: 12) {
+                    BankLogo(bank: bankJSON, fallbackName: name, size: 40)
+                    Text(bankJSON?["name"].str ?? "Scegli la banca").foregroundStyle(bankJSON == nil ? T.text3 : T.text1)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+                }
+                .padding(12).background(T.glass, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }.buttonStyle(.plain)
+            Field(placeholder: "Nome del conto (es. Conto principale)", text: $name)
             Field(placeholder: "Saldo", text: $balance, keyboard: .decimalPad)
             Picker("Tipo", selection: $type) { Text("Banca").tag("banche"); Text("Broker").tag("broker"); Text("Crypto").tag("crypto") }.pickerStyle(.segmented)
         }
+        .sheet(isPresented: $picking) { BankPickerSheet(selected: $bank) }
+        .onChange(of: bank) { old, new in
+            // Suggest the bank's name unless something else was typed.
+            let previous = FinanceCatalog.banks(app.data).first { $0["id"].str == old }?["name"].str ?? ""
+            if name.isEmpty || name == previous, let n = FinanceCatalog.banks(app.data).first(where: { $0["id"].str == new })?["name"].str { name = n }
+        }
     }
 }
-
 struct AssetForm: View {
     @EnvironmentObject var app: AppState
     @State private var name = ""
@@ -384,26 +407,67 @@ struct LiabilityForm: View {
 
 struct TxForm: View {
     @EnvironmentObject var app: AppState
-    let accounts: [String]
+    let accounts: [JSON]
     @State private var kind = "spesa"
     @State private var amount = ""
     @State private var category = ""
     @State private var account = ""
+    @State private var desc = ""
+    @State private var date = Date()
+    @State private var pickingCategory = false
+
+    private var categoryJSON: JSON? { FinanceCatalog.category(category, in: app.data) }
+
+    private func chip(_ title: String, bank: JSON?, name: String, on: Bool, _ tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            HStack(spacing: 8) {
+                if bank != nil || !name.isEmpty { BankLogo(bank: bank, fallbackName: name, size: 24) }
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(T.text1)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(on ? T.accent.opacity(0.28) : T.glass, in: Capsule())
+            .overlay(Capsule().stroke(on ? T.accent : .clear, lineWidth: 1))
+        }.buttonStyle(.plain)
+    }
+
     var body: some View {
         FormShell(title: "Nuovo movimento", canSave: Fmt.parse(amount) > 0) {
-            let r = await app.financeOp("transactions", "add", data: ["tx_type": .string(kind), "amount": .number(Fmt.parse(amount)), "category": .string(category), "account": .string(account)])
+            let r = await app.financeOp("transactions", "add", data: [
+                "tx_type": .string(kind), "amount": .number(Fmt.parse(amount)), "category": .string(category),
+                "account": .string(account), "description": .string(desc), "date": .string(Fmt.dayKey(date)),
+            ])
             return r != nil
         } content: {
             Picker("Tipo", selection: $kind) { Text("Spesa").tag("spesa"); Text("Entrata").tag("entrata") }.pickerStyle(.segmented)
             Field(placeholder: "Importo", text: $amount, keyboard: .decimalPad)
-            Field(placeholder: "Categoria", text: $category)
+            Button { pickingCategory = true } label: {
+                HStack(spacing: 12) {
+                    CategoryBadge(emoji: categoryJSON?["emoji"].str ?? "", size: 34)
+                    Text(category.isEmpty ? "Scegli la categoria" : category).foregroundStyle(category.isEmpty ? T.text3 : T.text1)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(T.text3)
+                }
+                .padding(10).background(T.glass, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }.buttonStyle(.plain)
+            Field(placeholder: "Descrizione (es. Spesa Esselunga)", text: $desc)
             if !accounts.isEmpty {
-                Picker("Conto", selection: $account) {
-                    Text("—").tag("")
-                    ForEach(accounts, id: \.self) { Text($0).tag($0) }
-                }.tint(T.accent)
+                VStack(alignment: .leading, spacing: 6) {
+                    CardLabel("CONTO")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            chip("Nessuno", bank: nil, name: "", on: account.isEmpty) { account = "" }
+                            ForEach(accounts.indices, id: \.self) { i in
+                                let a = accounts[i]
+                                chip(a["name"].str, bank: FinanceCatalog.bank(for: a, in: app.data), name: a["name"].str, on: account == a["name"].str) { account = a["name"].str }
+                            }
+                        }
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
             }
+            DatePicker("Data", selection: $date, in: ...Date(), displayedComponents: .date).foregroundStyle(T.text1)
         }
+        .sheet(isPresented: $pickingCategory) { CategoryPickerSheet(kind: kind, selected: $category) }
+        .onChange(of: kind) { _, _ in category = "" }   // the two kinds have different categories
     }
 }
 
