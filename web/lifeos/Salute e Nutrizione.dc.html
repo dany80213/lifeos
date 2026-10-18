@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  if (new URLSearchParams(location.search).get('embedded') === '1') {
+    document.documentElement.classList.add('lo-embedded');
+  }
+</script>
 <script src="./support.js"></script>
 <script src="./jarvis-client.js"></script>
 </head>
@@ -21,6 +26,38 @@
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideInDrawer { from { transform: translateX(100%); } to { transform: translateX(0); } }
   input::placeholder { color: inherit; opacity: 0.45; }
+  html.lo-embedded .lo-navWrap { display: none !important; }
+  html.lo-embedded .lo-container { padding-top: 16px !important; padding-bottom: 260px !important; }
+  html.lo-embedded .lo-chatbar { bottom: 10px !important; }
+  .lo-chatbar-fab {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, oklch(68% 0.20 235), oklch(60% 0.18 250));
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); margin: 0 auto; cursor: pointer;
+  }
+  @keyframes lo-chatbar-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .lo-chatbar-fab, .lo-chatbar-panel { animation: lo-chatbar-in 0.22s ease; }
+  .lo-chatbar-panel { display: flex; flex-direction: column; gap: 10px; }
+  @media (max-width: 720px) {
+    .lo-navbar { padding: 10px 14px !important; gap: 8px !important; }
+    .lo-navLeft { gap: 10px !important; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow { overflow-x: auto !important; -webkit-overflow-scrolling: touch; gap: 2px !important; scrollbar-width: none; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow::-webkit-scrollbar { display: none; }
+    .lo-tab-link { flex-shrink: 0; }
+    .lo-tab { padding: 7px 9px !important; font-size: 12.5px !important; border-radius: 10px !important; white-space: nowrap; }
+    .lo-navbar .lo-logo { flex-shrink: 0; font-size: 16px !important; }
+    .lo-navbar .lo-navRight { flex-shrink: 0; }
+    .lo-chip-hide { display: none !important; }
+    .lo-container { padding: 0 14px 120px !important; }
+    .lo-grid { grid-template-columns: 1fr !important; }
+    .lo-grid > *, .lo-grid-2 > *, .lo-row1 > *, .lo-row2 > *, .lo-row3 > *, .lo-row4 > *, .lo-finSecondaryGrid > * { min-width: 0 !important; }
+    .lo-grid-2 { grid-template-columns: repeat(2, 1fr) !important; }
+    .lo-nutriMainRow { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+    .lo-weekgrid-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .lo-weekgrid { min-width: 640px !important; }
+    .lo-jarvisWindow { width: calc(100vw - 28px) !important; }
+    .lo-wrap-row { flex-wrap: wrap !important; row-gap: 8px !important; }
+  }
 </style>
 </helmet>
 <div style="{{ styles.page }}">
@@ -28,22 +65,22 @@
   <div style="{{ styles.blobB }}"></div>
   <div style="{{ styles.blobC }}"></div>
 
-  <div style="{{ styles.navWrap }}">
-    <div style="{{ styles.navbar }}">
-      <div style="{{ styles.navLeft }}">
-        <div style="{{ styles.logo }}">LifeOS</div>
-        <div style="{{ styles.tabRow }}">
-          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
-          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
-          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
-          <div style="{{ styles.tabActive }}">Salute e Nutrizione</div>
+  <div style="{{ styles.navWrap }}" class="lo-navWrap">
+    <div style="{{ styles.navbar }}" class="lo-navbar">
+      <div style="{{ styles.navLeft }}" class="lo-navLeft">
+        <div style="{{ styles.logo }}" class="lo-logo">LifeOS</div>
+        <div style="{{ styles.tabRow }}" class="lo-tabRow">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Home</div></a>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Finanze</div></a>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Review</div></a>
+          <div style="{{ styles.tabActive }}" class="lo-tab-link lo-tab">Salute e Nutrizione</div>
         </div>
       </div>
-      <div style="{{ styles.navRight }}">
-        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+      <div style="{{ styles.navRight }}" class="lo-navRight">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}" class="lo-chip-hide">
           <div style="{{ styles.themeKnob }}"></div>
         </div>
-        <div style="{{ styles.clockBlock }}">
+        <div style="{{ styles.clockBlock }}" class="lo-chip-hide">
           <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
           <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
         </div>
@@ -52,9 +89,9 @@
     </div>
   </div>
 
-  <div style="{{ styles.container }}">
+  <div style="{{ styles.container }}" class="lo-container">
 
-    <div style="{{ styles.sectionHeaderRow }}">
+    <div style="{{ styles.sectionHeaderRow }}" class="lo-wrap-row">
       <div style="{{ styles.sectionTitle }}">NUTRIZIONE</div>
       <div style="{{ styles.sourceBadgeGroup }}">
         <sc-if value="{{ fatsecretConnected }}" hint-placeholder-val="{{ false }}">
@@ -67,7 +104,7 @@
       </div>
     </div>
 
-    <div style="{{ styles.rowThird }}">
+    <div style="{{ styles.rowThird }}" class="lo-grid">
       <div style="{{ styles.card }}">
         <div style="{{ styles.cardTitle }}">CALORIE DI OGGI</div>
         <div style="{{ styles.ringWrap }}">
@@ -82,7 +119,7 @@
         <div style="{{ styles.macroRowsWrap }}">
           <sc-for list="{{ macros }}" as="mac" hint-placeholder-count="3">
             <div style="{{ styles.macroRow }}">
-              <div style="{{ styles.macroHead }}">
+              <div style="{{ styles.macroHead }}" class="lo-wrap-row">
                 <div style="{{ styles.macroName }}">{{ mac.name }}</div>
                 <div style="{{ styles.macroVal }}">{{ mac.consumed }} / {{ mac.target }} g · {{ mac.pct }}% · {{ mac.kcalShare }} kcal</div>
               </div>
@@ -205,12 +242,12 @@
       </div>
     </div>
 
-    <div style="{{ styles.sectionHeaderRow }}">
+    <div style="{{ styles.sectionHeaderRow }}" class="lo-wrap-row">
       <div style="{{ styles.sectionTitle }}">SALUTE</div>
       <div style="{{ styles.sourceBadge }}"><div style="{{ styles.refreshIcon }}"></div>Apple Salute · sincronizzato 14:18</div>
     </div>
 
-    <div style="{{ styles.rowMetrics }}">
+    <div style="{{ styles.rowMetrics }}" class="lo-grid-2">
       <sc-for list="{{ healthMetrics }}" as="hm" hint-placeholder-count="5">
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardTitle }}">{{ hm.label }}</div>
@@ -241,8 +278,8 @@
           </div>
         </div>
       </div>
-      <div style="{{ styles.calendarBodyWrap }}">
-      <div style="{{ styles.weekGrid }}">
+      <div style="{{ styles.calendarBodyWrap }}" class="lo-weekgrid-wrap">
+      <div style="{{ styles.weekGrid }}" class="lo-weekgrid">
         <sc-for list="{{ workoutDays }}" as="day" hint-placeholder-count="7">
           <div style="{{ styles.dayCol }}">
             <div style="{{ day.headerStyle }}">
@@ -321,13 +358,13 @@
       </div>
 
       <div style="{{ styles.drawerSectionLabel }}">Esercizi</div>
-      <div style="{{ styles.exerciseHeaderRow }}">
+      <div style="{{ styles.exerciseHeaderRow }}" class="lo-grid">
         <div style="{{ styles.exerciseColName }}">Esercizio</div>
         <div style="{{ styles.exerciseColNum }}">Serie x rip</div>
         <div style="{{ styles.exerciseColNum }}">Carico</div>
       </div>
       <sc-for list="{{ wf.exercises }}" as="ex" hint-placeholder-count="3">
-        <div style="{{ styles.exerciseEditRow }}">
+        <div style="{{ styles.exerciseEditRow }}" class="lo-grid">
           <input style="{{ styles.exerciseInputName }}" placeholder="Panca piana" value="{{ ex.name }}" onChange="{{ ex.onNameChange }}"></input>
           <input style="{{ styles.exerciseInputNum }}" placeholder="4x8" value="{{ ex.sets }}" onChange="{{ ex.onSetsChange }}"></input>
           <input style="{{ styles.exerciseInputNum }}" placeholder="70 kg" value="{{ ex.load }}" onChange="{{ ex.onLoadChange }}"></input>
@@ -348,7 +385,12 @@
     </div>
   </sc-if>
 
-  <div style="{{ styles.chatBarWrap }}">
+  <div style="{{ styles.chatBarWrap }}" class="lo-chatbar">
+    <sc-if value="{{ !chatBarOpen }}" hint-placeholder-val="{{ false }}">
+      <div class="lo-chatbar-fab" onClick="{{ openChatBar }}">✦</div>
+    </sc-if>
+    <sc-if value="{{ chatBarOpen }}" hint-placeholder-val="{{ true }}">
+      <div class="lo-chatbar-panel">
     <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
       <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
     </sc-if>
@@ -393,6 +435,8 @@
       <div style="{{ styles.chatMic }}">🎙</div>
       <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
     </div>
+      </div>
+    </sc-if>
   </div>
 </div>
 
@@ -468,11 +512,13 @@ class Component extends DCLogic {
     showMealSuggestion: true,
     suggestionExpanded: false,
     chatText: '',
+    chatBarOpen: new URLSearchParams(location.search).get('embedded') !== '1', // collapsed only inside the app — tap .lo-chatbar-fab to open; unchanged (always open) for regular browser visitors
     lastReply: null,
   };
 
   componentDidMount() {
     this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    window.__lifeosCollapseChatBar = () => this.setState({ chatBarOpen: false }); // reset by the app on tab change
     window.LifeOSJarvis.fetchData().then(data => {
       const patch = {};
       const localDay = (iso) => new Date(iso).toLocaleDateString('en-CA');
@@ -578,7 +624,7 @@ class Component extends DCLogic {
       .catch(() => {});
   };
 
-  componentWillUnmount() { clearInterval(this._timer); }
+  componentWillUnmount() { clearInterval(this._timer); delete window.__lifeosCollapseChatBar; }
 
   toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
   setNutritionMode = (mode) => this.setState({ nutritionMode: mode });
@@ -674,6 +720,7 @@ class Component extends DCLogic {
   };
   dismissSuggestion = () => this.setState({ showMealSuggestion: false });
   toggleSuggestionExpand = () => this.setState(s => ({ suggestionExpanded: !s.suggestionExpanded }));
+  openChatBar = () => this.setState({ chatBarOpen: true });
   onChatSubmit = () => {
     const text = this.state.chatText.trim();
     if (!text) return;
@@ -1129,6 +1176,7 @@ class Component extends DCLogic {
       onChatChange: (e) => this.setState({ chatText: e.target.value }),
       onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
       onChatSubmit: this.onChatSubmit,
+      chatBarOpen: s.chatBarOpen, openChatBar: this.openChatBar,
     };
   }
 }

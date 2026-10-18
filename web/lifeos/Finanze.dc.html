@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  if (new URLSearchParams(location.search).get('embedded') === '1') {
+    document.documentElement.classList.add('lo-embedded');
+  }
+</script>
 <script src="./support.js"></script>
 <script src="./jarvis-client.js"></script>
 </head>
@@ -20,6 +25,37 @@
   @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   input::placeholder { color: inherit; opacity: 0.45; }
+  html.lo-embedded .lo-navWrap { display: none !important; }
+  html.lo-embedded .lo-container { padding-top: 16px !important; padding-bottom: 260px !important; }
+  html.lo-embedded .lo-chatbar { bottom: 10px !important; }
+  .lo-chatbar-fab {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, oklch(68% 0.20 235), oklch(60% 0.18 250));
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); margin: 0 auto; cursor: pointer;
+  }
+  @keyframes lo-chatbar-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .lo-chatbar-fab, .lo-chatbar-panel { animation: lo-chatbar-in 0.22s ease; }
+  .lo-chatbar-panel { display: flex; flex-direction: column; gap: 10px; }
+  @media (max-width: 720px) {
+    .lo-navbar { padding: 10px 14px !important; gap: 8px !important; }
+    .lo-navLeft { gap: 10px !important; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow { overflow-x: auto !important; -webkit-overflow-scrolling: touch; gap: 2px !important; scrollbar-width: none; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow::-webkit-scrollbar { display: none; }
+    .lo-tab-link { flex-shrink: 0; }
+    .lo-tab { padding: 7px 9px !important; font-size: 12.5px !important; border-radius: 10px !important; white-space: nowrap; }
+    .lo-navbar .lo-logo { flex-shrink: 0; font-size: 16px !important; }
+    .lo-navbar .lo-navRight { flex-shrink: 0; }
+    .lo-chip-hide { display: none !important; }
+    .lo-container { padding: 0 14px 120px !important; }
+    .lo-grid { grid-template-columns: 1fr !important; }
+    .lo-grid > *, .lo-grid-2 > *, .lo-row1 > *, .lo-row2 > *, .lo-row3 > *, .lo-row4 > *, .lo-finSecondaryGrid > * { min-width: 0 !important; }
+    .lo-grid-2 { grid-template-columns: repeat(2, 1fr) !important; }
+    .lo-nutriMainRow { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+    .lo-weekgrid-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .lo-weekgrid { min-width: 640px !important; }
+    .lo-jarvisWindow { width: calc(100vw - 28px) !important; }
+  }
 </style>
 </helmet>
 <div style="{{ styles.page }}">
@@ -27,34 +63,34 @@
   <div style="{{ styles.blobB }}"></div>
   <div style="{{ styles.blobC }}"></div>
 
-  <div style="{{ styles.navWrap }}">
-    <div style="{{ styles.navbar }}">
-      <div style="{{ styles.navLeft }}">
-        <div style="{{ styles.logo }}">LifeOS</div>
-        <div style="{{ styles.tabRow }}">
-          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
-          <div style="{{ styles.tabActive }}">Finanze</div>
-          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
-          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+  <div style="{{ styles.navWrap }}" class="lo-navWrap">
+    <div style="{{ styles.navbar }}" class="lo-navbar">
+      <div style="{{ styles.navLeft }}" class="lo-navLeft">
+        <div style="{{ styles.logo }}" class="lo-logo">LifeOS</div>
+        <div style="{{ styles.tabRow }}" class="lo-tabRow">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Home</div></a>
+          <div style="{{ styles.tabActive }}" class="lo-tab-link lo-tab">Finanze</div>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Review</div></a>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Salute e Nutrizione</div></a>
         </div>
       </div>
-      <div style="{{ styles.navRight }}">
-        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+      <div style="{{ styles.navRight }}" class="lo-navRight">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}" class="lo-chip-hide">
           <div style="{{ styles.themeKnob }}"></div>
         </div>
-        <div style="{{ btc.chipStyle }}">
+        <div style="{{ btc.chipStyle }}" class="lo-chip-hide">
           <span style="{{ styles.chipLabel }}">BTC</span>
           <span style="{{ styles.chipPrice }}">{{ btc.price }}</span>
           <span style="{{ btc.arrowStyle }}"></span>
           <span style="{{ btc.deltaStyle }}">{{ btc.change }}</span>
         </div>
-        <div style="{{ eunl.chipStyle }}">
+        <div style="{{ eunl.chipStyle }}" class="lo-chip-hide">
           <span style="{{ styles.chipLabel }}">EUNL</span>
           <span style="{{ styles.chipPrice }}">{{ eunl.price }}</span>
           <span style="{{ eunl.arrowStyle }}"></span>
           <span style="{{ eunl.deltaStyle }}">{{ eunl.change }}</span>
         </div>
-        <div style="{{ styles.clockBlock }}">
+        <div style="{{ styles.clockBlock }}" class="lo-chip-hide">
           <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
           <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
         </div>
@@ -63,7 +99,7 @@
     </div>
   </div>
 
-  <div style="{{ styles.container }}">
+  <div style="{{ styles.container }}" class="lo-container">
 
     <div style="{{ styles.toggleRow }}">
       <div style="{{ styles.segToggle }}">
@@ -122,7 +158,7 @@
     <div style="{{ styles.stateWrap }}">
       <div style="{{ styles.netWorthNote }}">Patrimonio netto = Liquidità + Investito − Passività</div>
 
-      <div style="{{ styles.rowAccounts }}">
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardHeaderRow }}">
             <div style="{{ styles.cardTitle }}">CONTI</div>
@@ -145,7 +181,7 @@
               </div>
             </sc-for>
           </div>
-          <div style="{{ styles.financeFormRow5 }}">
+          <div style="{{ styles.financeFormRow5 }}" class="lo-grid">
             <input style="{{ styles.txInput }}" placeholder="Nome conto" value="{{ newAccountForm.name }}" onChange="{{ newAccountForm.onName }}"></input>
             <input style="{{ styles.txInput }}" placeholder="Istituto" value="{{ newAccountForm.inst }}" onChange="{{ newAccountForm.onInst }}"></input>
             <select style="{{ styles.txSelect }}" value="{{ newAccountForm.type }}" onChange="{{ newAccountForm.onType }}">
@@ -175,7 +211,7 @@
         </div>
       </div>
 
-      <div style="{{ styles.rowAccounts }}">
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardTitle }}">INVESTITO</div>
           <div style="{{ styles.liqBig }}">{{ invested.total }}</div>
@@ -216,7 +252,7 @@
               </div>
             </sc-for>
           </div>
-          <div style="{{ styles.financeFormRow5 }}">
+          <div style="{{ styles.financeFormRow5 }}" class="lo-grid">
             <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newLiabilityForm.name }}" onChange="{{ newLiabilityForm.onName }}"></input>
             <input style="{{ styles.txInput }}" type="number" placeholder="Importo orig. €" value="{{ newLiabilityForm.original }}" onChange="{{ newLiabilityForm.onOriginal }}"></input>
             <input style="{{ styles.txInput }}" type="number" placeholder="Residuo €" value="{{ newLiabilityForm.resid }}" onChange="{{ newLiabilityForm.onResid }}"></input>
@@ -226,14 +262,14 @@
         </div>
       </div>
 
-      <div style="{{ styles.rowAccounts }}">
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardTitle }}">MOVIMENTI</div>
           <div style="{{ styles.segmentRowSmall }}">
             <div style="{{ txForm.spesaStyle }}" onClick="{{ txForm.selectSpesa }}">Spesa</div>
             <div style="{{ txForm.entrataStyle }}" onClick="{{ txForm.selectEntrata }}">Entrata</div>
           </div>
-          <div style="{{ styles.txFormRow }}">
+          <div style="{{ styles.txFormRow }}" class="lo-grid">
             <input style="{{ styles.txInput }}" type="number" placeholder="Importo €" value="{{ txForm.amount }}" onChange="{{ txForm.onAmountChange }}"></input>
             <select style="{{ styles.txSelect }}" value="{{ txForm.category }}" onChange="{{ txForm.onCategoryChange }}">
               <sc-for list="{{ txForm.categoryOptions }}" as="co" hint-placeholder-count="4">
@@ -296,7 +332,7 @@
 
     <sc-if value="{{ isInvestimenti }}" hint-placeholder-val="{{ false }}">
     <div style="{{ styles.stateWrap }}">
-      <div style="{{ styles.rowAlloc }}">
+      <div style="{{ styles.rowAlloc }}" class="lo-grid">
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardTitle }}">ALLOCAZIONE</div>
           <div style="{{ styles.donutWrap }}">
@@ -319,7 +355,7 @@
           <div style="{{ styles.cardHeaderRow }}">
             <div style="{{ styles.cardTitle }}">ASSET</div>
           </div>
-          <div style="{{ styles.assetHeaderRow }}">
+          <div style="{{ styles.assetHeaderRow }}" class="lo-grid">
             <div style="{{ styles.assetColAsset }}">Asset</div>
             <div style="{{ styles.assetColNum }}">Qtà</div>
             <div style="{{ styles.assetColNum }}">Prezzo medio</div>
@@ -333,7 +369,7 @@
           </div>
           <div style="{{ styles.assetList }}">
             <sc-for list="{{ assets }}" as="a" hint-placeholder-count="5">
-              <div style="{{ styles.assetRow }}">
+              <div style="{{ styles.assetRow }}" class="lo-grid">
                 <div style="{{ a.nameCellStyle }}" onClick="{{ a.toggleDetail }}" title="Tocca per i singoli acquisti">
                   <div style="{{ a.logoStyle }}">{{ a.mono }}</div>
                   <div>
@@ -360,7 +396,7 @@
                     <div style="{{ styles.lotsColLabel }}">{{ a.detailCount }}</div>
                   </div>
                   <sc-for list="{{ a.lots }}" as="lot" hint-placeholder-count="2">
-                    <div style="{{ styles.lotRow }}">
+                    <div style="{{ styles.lotRow }}" class="lo-grid">
                       <div style="{{ styles.lotDate }}">{{ lot.dateLabel }}</div>
                       <div style="{{ styles.lotQty }}">{{ lot.qty }}</div>
                       <div style="{{ styles.lotPrice }}">{{ lot.priceLabel }}</div>
@@ -372,7 +408,7 @@
               </sc-if>
             </sc-for>
           </div>
-          <div style="{{ styles.financeFormRow6 }}">
+          <div style="{{ styles.financeFormRow6 }}" class="lo-grid">
             <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newAssetForm.name }}" onChange="{{ newAssetForm.onName }}"></input>
             <input style="{{ styles.txInput }}" placeholder="Simbolo (es. BTC, AAPL)" value="{{ newAssetForm.symbol }}" onChange="{{ newAssetForm.onSymbol }}"></input>
             <select style="{{ styles.txSelect }}" value="{{ newAssetForm.assetClass }}" onChange="{{ newAssetForm.onAssetClass }}">
@@ -408,7 +444,7 @@
             </div>
           </sc-for>
         </div>
-        <div style="{{ styles.financeFormRow6 }}">
+        <div style="{{ styles.financeFormRow6 }}" class="lo-grid">
           <input style="{{ styles.txInput }}" placeholder="Nome" value="{{ newRecurringForm.name }}" onChange="{{ newRecurringForm.onName }}"></input>
           <input style="{{ styles.txInput }}" placeholder="Simbolo" value="{{ newRecurringForm.symbol }}" onChange="{{ newRecurringForm.onSymbol }}"></input>
           <select style="{{ styles.txSelect }}" value="{{ newRecurringForm.assetClass }}" onChange="{{ newRecurringForm.onAssetClass }}">
@@ -478,7 +514,7 @@
           <span>{{ multiChart.startLabel }}</span>
           <span>{{ multiChart.endLabel }}</span>
         </div>
-        <div style="{{ styles.bestWorstRow }}">
+        <div style="{{ styles.bestWorstRow }}" class="lo-grid">
           <div style="{{ styles.bestWorstCard }}">
             <div style="{{ styles.bestWorstLabel }}">MIGLIORE</div>
             <div style="{{ styles.bestWorstName }}">{{ multiChart.best.name }}</div>
@@ -511,7 +547,12 @@
     </div>
   </sc-if>
 
-  <div style="{{ styles.chatBarWrap }}">
+  <div style="{{ styles.chatBarWrap }}" class="lo-chatbar">
+    <sc-if value="{{ !chatBarOpen }}" hint-placeholder-val="{{ false }}">
+      <div class="lo-chatbar-fab" onClick="{{ openChatBar }}">✦</div>
+    </sc-if>
+    <sc-if value="{{ chatBarOpen }}" hint-placeholder-val="{{ true }}">
+      <div class="lo-chatbar-panel">
     <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
       <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
     </sc-if>
@@ -526,6 +567,8 @@
       <div style="{{ styles.chatMic }}">🎙</div>
       <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
     </div>
+      </div>
+    </sc-if>
   </div>
 </div>
 
@@ -605,6 +648,7 @@ class Component extends DCLogic {
     sortDir: 'desc',
     aiInsightExpanded: false,
     chatText: '',
+    chatBarOpen: new URLSearchParams(location.search).get('embedded') !== '1', // collapsed only inside the app — tap .lo-chatbar-fab to open; unchanged (always open) for regular browser visitors
     lastReply: null,
     transactions: [], // real only — see componentDidMount; no more fictional seed rows
     txType: 'spesa',
@@ -629,6 +673,7 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
+    window.__lifeosCollapseChatBar = () => this.setState({ chatBarOpen: false }); // reset by the app on tab change
     window.LifeOSJarvis.fetchData().then(data => {
       const patch = {
         accounts: data.accounts || [], liabilities: data.liabilities || [], assets: data.assets || [],
@@ -643,7 +688,7 @@ class Component extends DCLogic {
       this.setState(patch);
     }).catch(() => {});
   }
-  componentWillUnmount() { clearInterval(this._timer); }
+  componentWillUnmount() { clearInterval(this._timer); delete window.__lifeosCollapseChatBar; }
 
   setNewAccountField = (field, v) => this.setState(s => ({ newAccount: { ...s.newAccount, [field]: v } }));
   addAccountRow = () => {
@@ -754,6 +799,7 @@ class Component extends DCLogic {
     this.setState({ multiHoverFrac: frac });
   };
   onMultiChartLeave = () => this.setState({ multiHoverFrac: null });
+  openChatBar = () => this.setState({ chatBarOpen: true });
   onChatSubmit = () => {
     const text = this.state.chatText.trim();
     if (!text) return;
@@ -1464,6 +1510,7 @@ class Component extends DCLogic {
       onChatChange: (e) => this.setState({ chatText: e.target.value }),
       onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
       onChatSubmit: this.onChatSubmit,
+      chatBarOpen: s.chatBarOpen, openChatBar: this.openChatBar,
     };
   }
 }

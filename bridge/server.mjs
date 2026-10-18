@@ -64,7 +64,7 @@ import { lookupDetails, lookupHistory, lookupPrices } from './market-prices.mjs'
 import { startRecurringBuyScheduler } from './recurring-buys.mjs'
 import { listCalendarColors, listCalendarNames, listEvents } from './lifeos-caldav.mjs'
 import { fetchCompiti, fetchVerifiche, startVerificheSyncScheduler } from './lifeos-didup.mjs'
-import { ActionValidationError, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
+import { ActionValidationError, refreshCalendarNames, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
 import { FatSecretError, getFoodDetail, searchFoods } from './lifeos-fatsecret.mjs'
 import {
   authorizeUrl, createFoodEntry, FatSecretDiaryError, getAccessToken, getFoodEntries,
@@ -276,6 +276,8 @@ const WS_PATH = `${BASE_PATH}/ws`
  * Chrome/camera. Unset means the option isn't offered.
  */
 const QWEN_URL = process.env.QWEN_URL || null
+const GROQ_MODEL_PRIMARY = process.env.GROQ_MODEL_PRIMARY || 'openai/gpt-oss-120b'
+const GROQ_MODEL_FALLBACK = process.env.GROQ_MODEL_FALLBACK || 'openai/gpt-oss-20b'
 const QWEN_API_KEY = process.env.QWEN_API_KEY || null
 
 /**
@@ -1376,51 +1378,6 @@ const handleRequest = async (req, res) => {
     return res.end(JSON.stringify({ ok: true, record }))
   }
 
-  // Apple Health, as read by the iPhone app (HealthKit only exists there). The phone POSTs the last
-  // days of steps / active energy / sleep / weight / resting HR; the Mac app, the web and the phone
-  // itself read them back from here, so every client shows the same numbers. Session-gated like the
-  // rest of /api/lifeos-*, and it upserts the same per-day snapshots the Shortcut import writes.
-  if (new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-health`) {
-    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
-      res.writeHead(401, cors)
-      return res.end('unauthorized')
-    }
-    const json = (code, obj) => {
-      res.writeHead(code, { ...cors, 'content-type': 'application/json' })
-      return res.end(JSON.stringify(obj))
-    }
-    if (req.method === 'GET') {
-      const store = await getStore()
-      const dates = Object.keys(store.health).sort().slice(-14)
-      const days = dates.map((d) => store.health[d])
-      // Per-field latest value: today's snapshot may have steps but no weight yet.
-      const latest = {}
-      for (const day of days) for (const [k, v] of Object.entries(day)) if (v != null) latest[k] = v
-      return json(200, { days, latest })
-    }
-    if (req.method === 'POST') {
-      let body = ''
-      for await (const chunk of req) {
-        body += chunk
-        if (body.length > 64 * 1024) break
-      }
-      let payload
-      try { payload = JSON.parse(body || '{}') } catch { return json(400, { error: 'bad json' }) }
-      const FIELDS = ['steps', 'activeKcal', 'sleepHours', 'weight', 'restingHr']
-      const days = Array.isArray(payload.days) ? payload.days.slice(0, 31) : []
-      let saved = 0
-      for (const d of days) {
-        if (typeof d?.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) continue
-        const fields = {}
-        for (const k of FIELDS) if (typeof d[k] === 'number' && Number.isFinite(d[k])) fields[k] = d[k]
-        if (!Object.keys(fields).length) continue
-        await setHealthSnapshot(d.date, { ...fields, source: 'iphone' })
-        saved++
-      }
-      return json(200, { ok: true, saved })
-    }
-  }
-
   // TREND IA on Salute e Nutrizione. Cached in the store, so a plain page
   // load (no ?force) only hits Gemini once per LOCAL calendar day — this is
   // what makes "si aggiorna una volta al giorno a meno che non aggiornato
@@ -2025,8 +1982,8 @@ console.log(
 )
 console.log(
   QWEN_URL
-    ? `[jarvis] local model (Qwen2.5) available at ${QWEN_URL}`
-    : '[jarvis] local model not configured — set QWEN_URL to offer it as a model in the LifeOS pages',
+    ? `[jarvis] external model (Groq: ${GROQ_MODEL_PRIMARY} → ${GROQ_MODEL_FALLBACK}) available at ${QWEN_URL}`
+    : '[jarvis] external model not configured — set QWEN_URL to offer it as a model in the LifeOS pages',
 )
 
 /**
@@ -2108,67 +2065,87 @@ wss.on('connection', (socket) => {
       return
     }
     try {
+      await refreshCalendarNames()
       const tools = toolsForSection(section)
-      const res = await fetch(QWEN_URL, {
+      const messages = [
+        { role: 'system', content: systemPromptFor(section) },
+        { role: 'user', content: text },
+      ]
+      const callGroq = (model) => fetch(QWEN_URL, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           ...(QWEN_API_KEY ? { authorization: `Bearer ${QWEN_API_KEY}` } : {}),
         },
-        // A tool call that never terminates would otherwise hang the request
-        // indefinitely — measured on MiniCPM under a different schema, where
-        // the model generated past 1000 tokens without closing its JSON.
-        // The "home" section offers all four tools at once, so its prompt is
-        // roughly 4x longer than a single-tool section's — measured over
-        // 90s on this Pi before that extra prompt-processing time is done.
         signal: AbortSignal.timeout(120_000),
         body: JSON.stringify({
-          model: process.env.QWEN_MODEL || 'qwen2.5-3b',
+          model,
           stream: false,
-          max_tokens: 400,
+          max_tokens: 800,
           temperature: 0.2,
-          messages: [
-            { role: 'system', content: systemPromptFor(section) },
-            { role: 'user', content: text },
-          ],
+          messages,
           ...(tools.length ? { tools } : {}),
         }),
       })
-      if (!res.ok) {
-        sendTurn({ type: 'error', message: `Il modello locale ha risposto ${res.status}.` })
-        return
-      }
-      const data = await res.json()
-      const message = data.choices?.[0]?.message
-      const calls = (message?.tool_calls ?? []).map((c) => c.function).filter(Boolean)
-      if (calls.length) {
-        const confirms = []
-        let lastRecord = null
-        let lastAction = null
-        for (const call of calls) {
-          let args
-          try {
-            args = JSON.parse(call.arguments || '{}')
-          } catch {
-            confirms.push('Ho proposto un’azione non valida.')
-            continue
+      // A small tool loop: the model often emits ONE call per turn, so a
+      // request with two actions ("cena venerdì e palestra sabato") is only
+      // complete once it has been told the first one went through. Capped, and
+      // the reply is built from what runTool really wrote, never from model text.
+      const confirms = []
+      let lastRecord = null
+      let lastAction = null
+      for (let round = 0; round < 4; round++) {
+        let res = await callGroq(GROQ_MODEL_PRIMARY)
+        if (res.status === 429 || res.status === 400) {
+          res = await callGroq(GROQ_MODEL_FALLBACK)
+        }
+        if (!res.ok) {
+          if (confirms.length) break
+          sendTurn({ type: 'error', message: `Il modello locale ha risposto ${res.status}.` })
+          return
+        }
+        const data = await res.json()
+        const message = data.choices?.[0]?.message
+        const calls = message?.tool_calls ?? []
+        if (!calls.length) {
+          if (!confirms.length) {
+            sendTurn({ type: 'done', text: message?.content || '...' })
+            return
           }
+          break
+        }
+        messages.push({ role: 'assistant', content: message.content ?? null, tool_calls: calls })
+        let needsAnswer = false
+        for (const c of calls) {
+          let outcome
           try {
-            const { record, confirm, action } = await runTool(call.name, args)
+            const args = JSON.parse(c.function?.arguments || '{}')
+            const { record, confirm, action } = await runTool(c.function.name, args)
             confirms.push(confirm)
             lastRecord = record
             lastAction = action
+            outcome = `Fatto: ${confirm}`
           } catch (err) {
             // A bad/empty argument (amount 0, blank name…) is a clarifying
             // question, not a failure — and definitely not a fabricated record.
-            if (err instanceof ActionValidationError) confirms.push(err.message)
-            else throw err
+            if (err instanceof ActionValidationError) {
+              confirms.push(err.message)
+              outcome = `Non eseguito: ${err.message}`
+              needsAnswer = true
+            } else if (err instanceof SyntaxError) {
+              confirms.push('Ho proposto un’azione non valida.')
+              outcome = 'Non eseguito: argomenti non validi.'
+            } else {
+              throw err
+            }
           }
+          messages.push({ role: 'tool', tool_call_id: c.id, content: outcome })
         }
-        sendTurn({ type: 'done', text: confirms.join('\n'), data: lastRecord, action: lastAction })
-        return
+        // Asked the user a question: stop here and let them answer.
+        if (needsAnswer) break
       }
-      sendTurn({ type: 'done', text: message?.content || '...' })
+      sendTurn({ type: 'done', text: confirms.join('\n') || '...', data: lastRecord, action: lastAction })
+      return
     } catch (err) {
       sendTurn({
         type: 'error',

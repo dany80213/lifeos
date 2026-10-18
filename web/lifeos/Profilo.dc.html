@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  if (new URLSearchParams(location.search).get('embedded') === '1') {
+    document.documentElement.classList.add('lo-embedded');
+  }
+</script>
 <script src="./support.js"></script>
 <script src="./jarvis-client.js"></script>
 </head>
@@ -20,6 +25,27 @@
   @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
   @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
   input::placeholder { color: inherit; opacity: 0.45; }
+  html.lo-embedded .lo-navWrap { display: none !important; }
+  html.lo-embedded .lo-container { padding-top: 16px !important; padding-bottom: 260px !important; }
+  @media (max-width: 720px) {
+    .lo-navbar { padding: 10px 14px !important; gap: 8px !important; }
+    .lo-navLeft { gap: 10px !important; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow { overflow-x: auto !important; -webkit-overflow-scrolling: touch; gap: 2px !important; scrollbar-width: none; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow::-webkit-scrollbar { display: none; }
+    .lo-tab-link { flex-shrink: 0; }
+    .lo-tab { padding: 7px 9px !important; font-size: 12.5px !important; border-radius: 10px !important; white-space: nowrap; }
+    .lo-navbar .lo-logo { flex-shrink: 0; font-size: 16px !important; }
+    .lo-navbar .lo-navRight { flex-shrink: 0; }
+    .lo-chip-hide { display: none !important; }
+    .lo-container { padding: 0 14px 120px !important; }
+    .lo-grid { grid-template-columns: 1fr !important; }
+    .lo-grid > *, .lo-grid-2 > *, .lo-row1 > *, .lo-row2 > *, .lo-row3 > *, .lo-row4 > *, .lo-finSecondaryGrid > * { min-width: 0 !important; }
+    .lo-grid-2 { grid-template-columns: repeat(2, 1fr) !important; }
+    .lo-nutriMainRow { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+    .lo-weekgrid-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .lo-weekgrid { min-width: 640px !important; }
+    .lo-jarvisWindow { width: calc(100vw - 28px) !important; }
+  }
 </style>
 </helmet>
 <div style="{{ styles.page }}">
@@ -27,22 +53,22 @@
   <div style="{{ styles.blobB }}"></div>
   <div style="{{ styles.blobC }}"></div>
 
-  <div style="{{ styles.navWrap }}">
-    <div style="{{ styles.navbar }}">
-      <div style="{{ styles.navLeft }}">
-        <a href="LifeOS.dc.html" style="{{ styles.logoLink }}"><div style="{{ styles.logo }}">LifeOS</div></a>
-        <div style="{{ styles.tabRow }}">
-          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Home</div></a>
-          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
-          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
-          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+  <div style="{{ styles.navWrap }}" class="lo-navWrap">
+    <div style="{{ styles.navbar }}" class="lo-navbar">
+      <div style="{{ styles.navLeft }}" class="lo-navLeft">
+        <a href="LifeOS.dc.html" style="{{ styles.logoLink }}"><div style="{{ styles.logo }}" class="lo-logo">LifeOS</div></a>
+        <div style="{{ styles.tabRow }}" class="lo-tabRow">
+          <a href="LifeOS.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Home</div></a>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Finanze</div></a>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Review</div></a>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Salute e Nutrizione</div></a>
         </div>
       </div>
-      <div style="{{ styles.navRight }}">
-        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+      <div style="{{ styles.navRight }}" class="lo-navRight">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}" class="lo-chip-hide">
           <div style="{{ styles.themeKnob }}"></div>
         </div>
-        <div style="{{ styles.clockBlock }}">
+        <div style="{{ styles.clockBlock }}" class="lo-chip-hide">
           <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
           <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
         </div>
@@ -51,7 +77,7 @@
     </div>
   </div>
 
-  <div style="{{ styles.container }}">
+  <div style="{{ styles.container }}" class="lo-container">
 
     <div style="{{ styles.card }}">
       <div style="{{ styles.profileHeaderRow }}">
@@ -74,7 +100,7 @@
 
     <div style="{{ styles.card }}">
       <div style="{{ styles.cardTitle }}">INFORMAZIONI PERSONALI</div>
-      <div style="{{ styles.personalGrid }}">
+      <div style="{{ styles.personalGrid }}" class="lo-grid">
         <div style="{{ styles.fieldWrap }}">
           <div style="{{ styles.fieldLabel }}">Nome</div>
           <input style="{{ styles.fieldInput }}" value="{{ personal.nome }}" onChange="{{ onPersonalChange('nome') }}"></input>
@@ -104,7 +130,7 @@
 
     <div style="{{ styles.card }}">
       <div style="{{ styles.cardTitle }}">COLLEGAMENTI</div>
-      <div style="{{ styles.connectionsGrid }}">
+      <div style="{{ styles.connectionsGrid }}" class="lo-grid">
         <sc-for list="{{ connections }}" as="co" hint-placeholder-count="3">
           <div style="{{ styles.connectionRow }}">
             <div style="{{ co.iconStyle }}">{{ co.mono }}</div>
@@ -157,7 +183,7 @@
 
     <div style="{{ styles.card }}">
       <div style="{{ styles.cardTitle }}">LE MIE IA</div>
-      <div style="{{ styles.aiModelsGrid }}">
+      <div style="{{ styles.aiModelsGrid }}" class="lo-grid">
         <sc-for list="{{ aiModels }}" as="am" hint-placeholder-count="3">
           <div style="{{ styles.aiModelCard }}">
             <div style="{{ styles.aiModelName }}">{{ am.name }}</div>
@@ -225,13 +251,15 @@ class Component extends DCLogic {
   state = {
     theme: (window.LifeOSJarvis && window.LifeOSJarvis.getTheme) ? window.LifeOSJarvis.getTheme() : 'dark',
     now: new Date(),
-    personal: { nome: 'Daniele', cognome: 'Rossi', email: 'daniele.rossi@mail.com', telefono: '+39 345 123 4567', citta: 'Milano', nascita: '12/04/1994', ruolo: 'Full-stack developer' },
+    // Filled from the server (settings.profile.personal) — set from the iOS app or typed here; see setPersonal.
+    personal: { nome: 'Daniele', cognome: '', email: '', telefono: '', citta: '', nascita: '', ruolo: '' },
     // Real only — refreshConnections populates these from /api/lifeos-data.
     // FatSecret is the only one with an actual connect/disconnect action:
     // Apple Calendar and Apple Salute are configured outside this page (env
     // vars on the Pi, the iOS Shortcut) so there's nothing to toggle, only a
     // real status to show.
     fatsecretConnected: false,
+    passkeyCount: 0,
     calendarConnected: false,
     healthConnected: false,
     healthLastDate: null,
@@ -248,6 +276,12 @@ class Component extends DCLogic {
       .then((settings) => this.setState({ geminiApiKey: settings?.geminiApiKey || '' }))
       .catch(() => {});
     this.refreshData();
+    {
+      const dir = location.pathname.replace(/\/[^/]*$/, '');
+      fetch(dir + '/api/passkey/list', { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d && d.passkeys) this.setState({ passkeyCount: d.passkeys.length }); }).catch(() => {});
+    }
+    window.LifeOSJarvis.onProfile((p) => { if (p && p.personal) this.setState((s) => ({ personal: { ...s.personal, ...p.personal } })); });
   }
   componentWillUnmount() { clearInterval(this._timer); }
 
@@ -276,7 +310,17 @@ class Component extends DCLogic {
     window.LifeOSJarvis.setTheme(theme);
     this.setState({ theme });
   };
-  setPersonal = (field, value) => this.setState(s => ({ personal: { ...s.personal, [field]: value } }));
+  // Typing saves to the server (debounced) so the iOS app and every other page see the same details.
+  setPersonal = (field, value) => this.setState(s => {
+    const personal = { ...s.personal, [field]: value };
+    clearTimeout(this._personalTimer);
+    this._personalTimer = setTimeout(() => window.LifeOSJarvis.setProfile({ personal }), 600);
+    return { personal };
+  });
+  managePasskeys = () => {
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    location.href = dir + '/passkeys';
+  };
   connectFatSecret = () => {
     const dir = location.pathname.replace(/\/[^/]*$/, '');
     location.href = dir + '/api/lifeos-fatsecret-connect';
@@ -419,6 +463,11 @@ class Component extends DCLogic {
         toggle: s.fatsecretConnected ? this.disconnectFatSecret : this.connectFatSecret,
       },
       {
+        name: 'Passkey', mono: 'PK', connected: s.passkeyCount > 0,
+        statusLabel: s.passkeyCount > 0 ? (s.passkeyCount + (s.passkeyCount === 1 ? ' registrata' : ' registrate') + ' — accesso senza password') : 'Nessuna — accedi con Face ID / Touch ID',
+        showBtn: true, btnLabel: 'Gestisci', toggle: this.managePasskeys,
+      },
+      {
         name: 'Apple Calendar', mono: 'AC', connected: s.calendarConnected,
         statusLabel: s.calendarConnected ? 'Connesso' : 'Nessun calendario trovato',
         showBtn: false, btnLabel: '', toggle: () => {},
@@ -448,7 +497,7 @@ class Component extends DCLogic {
     // jarvis-client.js's backendFor.
     const aiModels = [
       { name: 'Claude', desc: "L'assistente completo — accesso a MCP, Bash e agli strumenti del Mac. Lo stesso di Jarvis sul bot Telegram." },
-      { name: 'Qwen2.5 (locale)', desc: 'Eseguito sul Raspberry Pi, offline, senza costi di token. Può registrare spese, pasti, eventi e promemoria.' },
+      { name: 'Groq', desc: 'Modello veloce su Groq (gpt-oss). Può registrare spese, pasti, eventi e promemoria.' },
       { name: 'Gemini', desc: 'Google Gemini via API — usa la chiave qui sotto. Pensato per la sezione Investimenti (analisi di portafoglio, nessuna azione).' },
     ];
     const aiModelKeys = aiModels.map(m => m.name);

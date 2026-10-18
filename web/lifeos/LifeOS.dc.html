@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  if (new URLSearchParams(location.search).get('embedded') === '1') {
+    document.documentElement.classList.add('lo-embedded');
+  }
+</script>
 <script src="./support.js"></script>
 <script src="./jarvis-client.js"></script>
 </head>
@@ -19,6 +24,66 @@
   @keyframes blobDrift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,50px) scale(1.08); } }
   @keyframes blobDrift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,60px) scale(1.15); } }
   input::placeholder { color: inherit; opacity: 0.45; }
+  html.lo-embedded .lo-navWrap { display: none !important; }
+  html.lo-embedded .lo-container { padding-top: 16px !important; padding-bottom: 260px !important; }
+  html.lo-embedded .lo-chatbar { bottom: 10px !important; }
+  .lo-chatbar-fab {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, oklch(68% 0.20 235), oklch(60% 0.18 250));
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); margin: 0 auto; cursor: pointer;
+  }
+  @keyframes lo-chatbar-in { from { opacity: 0; transform: translateY(14px) scale(0.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .lo-chatbar-fab, .lo-chatbar-panel { animation: lo-chatbar-in 0.22s ease; }
+  .lo-chatbar-panel { display: flex; flex-direction: column; gap: 10px; }
+  @media (max-width: 720px) {
+    .lo-navbar { padding: 10px 14px !important; gap: 8px !important; }
+    .lo-navLeft { gap: 10px !important; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow { overflow-x: auto !important; -webkit-overflow-scrolling: touch; gap: 2px !important; scrollbar-width: none; flex: 1 1 auto !important; min-width: 0 !important; }
+    .lo-tabRow::-webkit-scrollbar { display: none; }
+    .lo-tab-link { flex-shrink: 0; }
+    .lo-tab { padding: 7px 9px !important; font-size: 12.5px !important; border-radius: 10px !important; white-space: nowrap; }
+    .lo-navbar .lo-logo { flex-shrink: 0; font-size: 16px !important; }
+    .lo-navbar .lo-navRight { flex-shrink: 0; }
+    .lo-chip-hide { display: none !important; }
+    .lo-container { padding: 0 14px 120px !important; }
+    .lo-row1, .lo-row2, .lo-row3, .lo-row4 { grid-template-columns: 1fr !important; }
+    .lo-grid > *, .lo-grid-2 > *, .lo-row1 > *, .lo-row2 > *, .lo-row3 > *, .lo-row4 > *, .lo-finSecondaryGrid > * { min-width: 0 !important; }
+    .lo-nutriMainRow { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+    .lo-finSecondaryGrid { grid-template-columns: repeat(2, 1fr) !important; }
+    .lo-weekgrid-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .lo-weekgrid { min-width: 640px !important; }
+    .lo-jarvisWindow { width: calc(100vw - 28px) !important; }
+    /* Collapsed = a plain round "J" button (same idea as .lo-chatbar-fab),
+       not a full-width bar with text — tap it to open the real card below. */
+    .lo-jarvis-card {
+      position: fixed !important; left: auto !important; right: 14px !important; bottom: 92px !important;
+      width: 56px !important; max-height: 56px !important; overflow: hidden !important; z-index: 45 !important;
+      padding: 0 !important; border-radius: 50% !important;
+      transition: max-height 0.28s ease, width 0.28s ease, left 0.28s ease, right 0.28s ease, border-radius 0.28s ease !important;
+    }
+    .lo-jarvis-card .lo-jarvis-handle { height: 56px !important; justify-content: center !important; }
+    .lo-jarvis-card:not(.lo-jarvis-open) .lo-jarvis-headertext,
+    .lo-jarvis-card:not(.lo-jarvis-open) .lo-jarvis-status-el,
+    .lo-jarvis-card:not(.lo-jarvis-open) .lo-jarvis-chevron { display: none !important; }
+    .lo-jarvis-card.lo-jarvis-open {
+      left: 14px !important; right: 14px !important; width: auto !important;
+      max-height: min(65vh, 520px) !important; overflow-y: auto !important;
+      padding: 16px 20px !important; border-radius: 16px !important;
+    }
+    .lo-jarvis-card.lo-jarvis-open .lo-jarvis-handle { height: auto !important; justify-content: flex-start !important; }
+    .lo-jarvis-handle { cursor: pointer !important; display: flex !important; align-items: center !important; }
+    .lo-jarvis-chevron {
+      width: 0; height: 0; border-left: 5px solid transparent !important; border-right: 5px solid transparent !important;
+      border-bottom: 6px solid rgba(255,255,255,0.55) !important; transition: transform 0.28s ease !important;
+      flex-shrink: 0 !important; margin-left: 4px !important;
+    }
+    .lo-jarvis-open .lo-jarvis-chevron { transform: rotate(180deg) !important; }
+    .lo-wrap-row { flex-wrap: wrap !important; row-gap: 8px !important; }
+    .lo-calhead { justify-content: flex-start !important; gap: 10px !important; min-width: 0 !important; flex: 1 1 100% !important; }
+    .lo-daytrack { max-height: 230px !important; overflow-y: auto !important; }
+    .lo-ellipsis { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+  }
 </style>
 </helmet>
 <div style="{{ styles.page }}">
@@ -26,34 +91,34 @@
   <div style="{{ styles.blobB }}"></div>
   <div style="{{ styles.blobC }}"></div>
 
-  <div style="{{ styles.navWrap }}">
-    <div style="{{ styles.navbar }}">
-      <div style="{{ styles.navLeft }}">
-        <div style="{{ styles.logo }}">LifeOS</div>
-        <div style="{{ styles.tabRow }}">
-          <div style="{{ styles.tabActive }}">Home</div>
-          <a href="Finanze.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Finanze</div></a>
-          <a href="Review.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Review</div></a>
-          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}"><div style="{{ styles.tab }}">Salute e Nutrizione</div></a>
+  <div style="{{ styles.navWrap }}" class="lo-navWrap">
+    <div style="{{ styles.navbar }}" class="lo-navbar">
+      <div style="{{ styles.navLeft }}" class="lo-navLeft">
+        <div style="{{ styles.logo }}" class="lo-logo">LifeOS</div>
+        <div style="{{ styles.tabRow }}" class="lo-tabRow">
+          <div style="{{ styles.tabActive }}" class="lo-tab-link lo-tab">Home</div>
+          <a href="Finanze.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Finanze</div></a>
+          <a href="Review.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Review</div></a>
+          <a href="Salute e Nutrizione.dc.html" style="{{ styles.tabLink }}" class="lo-tab-link"><div style="{{ styles.tab }}" class="lo-tab">Salute e Nutrizione</div></a>
         </div>
       </div>
-      <div style="{{ styles.navRight }}">
-        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}">
+      <div style="{{ styles.navRight }}" class="lo-navRight">
+        <div style="{{ styles.themeSwitch }}" onClick="{{ toggleTheme }}" class="lo-chip-hide">
           <div style="{{ styles.themeKnob }}"></div>
         </div>
-        <div style="{{ btc.chipStyle }}">
+        <div style="{{ btc.chipStyle }}" class="lo-chip-hide">
           <span style="{{ styles.chipLabel }}">BTC</span>
           <span style="{{ styles.chipPrice }}">{{ btc.price }}</span>
           <span style="{{ btc.arrowStyle }}"></span>
           <span style="{{ btc.deltaStyle }}">{{ btc.change }}</span>
         </div>
-        <div style="{{ eunl.chipStyle }}">
+        <div style="{{ eunl.chipStyle }}" class="lo-chip-hide">
           <span style="{{ styles.chipLabel }}">EUNL</span>
           <span style="{{ styles.chipPrice }}">{{ eunl.price }}</span>
           <span style="{{ eunl.arrowStyle }}"></span>
           <span style="{{ eunl.deltaStyle }}">{{ eunl.change }}</span>
         </div>
-        <div style="{{ styles.clockBlock }}">
+        <div style="{{ styles.clockBlock }}" class="lo-chip-hide">
           <div style="{{ styles.clockTime }}">{{ timeStr }}</div>
           <div style="{{ styles.clockDate }}">{{ dateStr }}</div>
         </div>
@@ -62,8 +127,8 @@
     </div>
   </div>
 
-  <div style="{{ styles.container }}">
-    <div style="{{ styles.row1 }}">
+  <div style="{{ styles.container }}" class="lo-container">
+    <div style="{{ styles.row1 }}" class="lo-row1">
       <div style="{{ styles.card }}">
         <div style="{{ styles.sessionTop }}">
           <div>
@@ -127,7 +192,7 @@
       </div>
     </div>
 
-    <div style="{{ styles.row2 }}">
+    <div style="{{ styles.row2 }}" class="lo-row2">
       <div style="{{ styles.card }}">
         <div style="{{ styles.cardHeaderRow }}">
           <div style="{{ styles.cardTitle }}">ABITUDINI</div>
@@ -154,9 +219,9 @@
       </div>
 
       <div style="{{ styles.card }}">
-        <div style="{{ styles.cardHeaderRow }}">
+        <div style="{{ styles.cardHeaderRow }}" class="lo-wrap-row">
           <div style="{{ styles.cardTitle }}">CALENDARIO</div>
-          <div style="{{ styles.calHeaderRight }}">
+          <div style="{{ styles.calHeaderRight }}" class="lo-wrap-row lo-calhead">
             <div style="{{ styles.legendRow }}">
               <div style="{{ styles.legendItem }}"><div style="{{ styles.legendDotApple }}"></div>Apple Calendar</div>
               <div style="{{ styles.legendItem }}"><div style="{{ styles.legendDotReminder }}"></div>Promemoria</div>
@@ -183,15 +248,15 @@
           </div>
         </div>
         <div style="{{ styles.calendarBodyWrap }}">
-        <div style="{{ styles.weekGridWrap }}">
-        <div style="{{ styles.weekGrid }}">
+        <div style="{{ styles.weekGridWrap }}" class="lo-weekgrid-wrap">
+        <div style="{{ styles.weekGrid }}" class="lo-weekgrid">
           <sc-for list="{{ calendarDays }}" as="day" hint-placeholder-count="7">
             <div style="{{ styles.dayCol }}">
               <div style="{{ day.headerStyle }}">
                 <div style="{{ styles.dayName }}">{{ day.name }}</div>
                 <div style="{{ styles.dayNum }}">{{ day.num }}</div>
               </div>
-              <div style="{{ styles.dayTrack }}">
+              <div style="{{ styles.dayTrack }}" class="lo-daytrack">
                 <sc-if value="{{ day.showLine }}" hint-placeholder-val="{{ false }}">
                   <div style="{{ day.lineStyle }}"></div>
                 </sc-if>
@@ -199,14 +264,14 @@
                 <sc-for list="{{ day.events }}" as="ev" hint-placeholder-count="1">
                   <div style="{{ ev.style }}" onClick="{{ ev.onClick }}">
                     <div style="{{ ev.timeStyle }}">{{ ev.time }}</div>
-                    <div style="{{ ev.titleStyle }}">{{ ev.title }}</div>
+                    <div style="{{ ev.titleStyle }}" class="lo-ellipsis">{{ ev.title }}</div>
                   </div>
                 </sc-for>
                 <div style="{{ styles.daySectionLabel }}">Promemoria</div>
                 <sc-for list="{{ day.todos }}" as="td2" hint-placeholder-count="1">
                   <div style="{{ td2.style }}" onClick="{{ td2.onClick }}">
                     <div style="{{ td2.timeStyle }}">{{ td2.time }}</div>
-                    <div style="{{ td2.titleStyle }}">{{ td2.title }}</div>
+                    <div style="{{ td2.titleStyle }}" class="lo-ellipsis">{{ td2.title }}</div>
                   </div>
                 </sc-for>
               </div>
@@ -251,7 +316,7 @@
       </div>
     </div>
 
-    <div style="{{ styles.row3 }}">
+    <div style="{{ styles.row3 }}" class="lo-row3">
       <div style="{{ styles.card }}">
         <div style="{{ styles.cardHeaderRow }}">
           <div style="{{ styles.cardTitle }}">POLSO FINANZIARIO</div>
@@ -264,7 +329,7 @@
           </div>
           <div style="{{ finDeltaChipStyle }}">{{ finDeltaText }}</div>
         </div>
-        <div style="{{ styles.finSecondaryGrid }}">
+        <div style="{{ styles.finSecondaryGrid }}" class="lo-finSecondaryGrid">
           <sc-for list="{{ finSecondary }}" as="fs" hint-placeholder-count="4">
             <div>
               <div style="{{ styles.finSecLabel }}">{{ fs.label }}</div>
@@ -286,7 +351,7 @@
             </sc-for>
           </div>
         </div>
-        <div style="{{ styles.nutriMainRow }}">
+        <div style="{{ styles.nutriMainRow }}" class="lo-nutriMainRow">
           <div style="{{ styles.kcalRingOuter }}">
             <div style="{{ styles.kcalRingInner }}">
               <div style="{{ styles.kcalNum }}">1.850</div>
@@ -319,7 +384,7 @@
       </div>
     </div>
 
-    <div style="{{ styles.row4 }}">
+    <div style="{{ styles.row4 }}" class="lo-row4">
       <div style="{{ styles.card }}">
         <div style="{{ styles.cardHeaderRow }}">
           <div style="{{ styles.cardTitle }}">VERIFICHE</div>
@@ -365,14 +430,15 @@
       </div>
     </div>
 
-    <div style="{{ styles.card }}">
-      <div style="{{ styles.jarvisHeaderRow }}">
+    <div style="{{ styles.card }}" class="{{ jarvisCardClass }}">
+      <div style="{{ styles.jarvisHeaderRow }}" class="lo-jarvis-handle" onClick="{{ toggleJarvisCard }}">
         <div style="{{ styles.jarvisAvatar }}">J</div>
-        <div style="{{ styles.jarvisHeaderText }}">
+        <div style="{{ styles.jarvisHeaderText }}" class="lo-jarvis-headertext">
           <div style="{{ styles.jarvisTitle }}">JARVIS</div>
           <div style="{{ styles.jarvisSubtitle }}">Il tuo assistente personale</div>
         </div>
-        <div style="{{ styles.jarvisStatus }}"><div style="{{ styles.jarvisStatusDot }}"></div>{{ jarvisStatusLabel }}</div>
+        <div style="{{ styles.jarvisStatus }}" class="lo-jarvis-status-el"><div style="{{ styles.jarvisStatusDot }}"></div>{{ jarvisStatusLabel }}</div>
+        <div class="lo-jarvis-chevron"></div>
       </div>
 
       <div style="{{ styles.jarvisConvo }}">
@@ -429,7 +495,7 @@
 
   <sc-if value="{{ jarvisWindowOpen }}" hint-placeholder-val="{{ false }}">
     <div style="{{ styles.jarvisWindowOverlay }}" onClick="{{ closeJarvisWindow }}"></div>
-    <div style="{{ styles.jarvisWindow }}">
+    <div style="{{ styles.jarvisWindow }}" class="lo-jarvisWindow">
       <div style="{{ styles.jarvisWindowHeader }}">
         <div style="{{ styles.jarvisWindowTitle }}">{{ jarvisWindowTitle }}</div>
         <div style="{{ styles.jarvisWindowClose }}" onClick="{{ closeJarvisWindow }}">✕</div>
@@ -472,7 +538,12 @@
     </div>
   </sc-if>
 
-  <div style="{{ styles.chatBarWrap }}">
+  <div style="{{ styles.chatBarWrap }}" class="lo-chatbar">
+    <sc-if value="{{ !chatBarOpen }}" hint-placeholder-val="{{ false }}">
+      <div class="lo-chatbar-fab" onClick="{{ openChatBar }}">✦</div>
+    </sc-if>
+    <sc-if value="{{ chatBarOpen }}" hint-placeholder-val="{{ true }}">
+      <div class="lo-chatbar-panel">
     <sc-if value="{{ lastReply }}" hint-placeholder-val="{{ false }}">
       <div style="{{ styles.replyBubble }}">{{ lastReply }}</div>
     </sc-if>
@@ -480,6 +551,8 @@
       <input style="{{ styles.chatInput }}" placeholder="Chiedi all'AI di LifeOS: aggiungi un evento, controlla il mercato, registra una spesa…" value="{{ chatText }}" onChange="{{ onChatChange }}" onKeyDown="{{ onChatKeyDown }}"></input>
       <div style="{{ styles.chatSend }}" onClick="{{ onChatSubmit }}">→</div>
     </div>
+      </div>
+    </sc-if>
   </div>
 </div>
 
@@ -739,9 +812,11 @@ class Component extends DCLogic {
     selectedEvent: null,
     notifyMinutes: '15',
     chatText: '',
+    chatBarOpen: new URLSearchParams(location.search).get('embedded') !== '1', // collapsed only inside the app — tap .lo-chatbar-fab to open; unchanged (always open) for regular browser visitors
     lastReply: null,
     jarvisInput: '',
     isListening: false,
+    jarvisCardOpen: false, // mobile-only drawer: collapsed by default, tap/swipe the handle to open — see .lo-jarvis-card
     jarvisMessages: [
       { from: 'jarvis', text: 'Buongiorno Daniele. Oggi hai 3 impegni e la palestra alle 18:00.' },
       { from: 'user', text: 'Mostrami le email' },
@@ -767,6 +842,9 @@ class Component extends DCLogic {
   componentDidMount() {
     this._timer = setInterval(() => this.setState({ now: new Date() }), 30000);
     this.refreshLifeOSData();
+    // Reset by the app when this tab is left — see WebScreen.onDisappear in WebView.swift.
+    window.__lifeosCollapseChatBar = () => this.setState({ chatBarOpen: false });
+    window.__lifeosCollapseJarvisCard = () => this.setState({ jarvisCardOpen: false });
   }
 
   // Shared by the initial mount and by onChatSubmit after a successful
@@ -809,9 +887,12 @@ class Component extends DCLogic {
   };
   componentWillUnmount() {
     clearInterval(this._timer);
+    delete window.__lifeosCollapseChatBar;
+    delete window.__lifeosCollapseJarvisCard;
   }
 
   toggleTheme = () => this.setState(s => { const theme = s.theme === 'dark' ? 'light' : 'dark'; window.LifeOSJarvis.setTheme(theme); return { theme }; });
+  toggleJarvisCard = () => this.setState(s => ({ jarvisCardOpen: !s.jarvisCardOpen }));
   // Scrivere qui crea un vero promemoria (lo stesso store che usa Jarvis in
   // chat con "add_reminder"), non una riga che sparisce al reload: la riga
   // appare subito (ottimistica), poi refreshLifeOSData() la sostituisce con
@@ -855,6 +936,7 @@ class Component extends DCLogic {
     window.LifeOSJarvis.setVisibleCalendars(visibleCalendars);
     return { visibleCalendars };
   });
+  openChatBar = () => this.setState({ chatBarOpen: true });
   onChatSubmit = () => {
     const text = this.state.chatText.trim();
     if (!text) return;
@@ -1276,6 +1358,7 @@ class Component extends DCLogic {
       onChatChange: (e) => this.setState({ chatText: e.target.value }),
       onChatKeyDown: (e) => { if (e.key === 'Enter') this.onChatSubmit(); },
       onChatSubmit: this.onChatSubmit,
+      chatBarOpen: s.chatBarOpen, openChatBar: this.openChatBar,
       jarvisStatusLabel: s.isListening ? 'In ascolto…' : 'Pronto',
       jarvisMessages, micBtn, jarvisSuggestions,
       jarvisInput: s.jarvisInput,
@@ -1292,6 +1375,8 @@ class Component extends DCLogic {
       draftModifyOpen: s.draftModifyOpen, toggleDraftModify: this.toggleDraftModify,
       draftModifyInstruction: s.draftModifyInstruction, onDraftModifyInstructionChange: (e) => this.setState({ draftModifyInstruction: e.target.value }),
       applyDraftModify: this.applyDraftModify, saveDraft: this.saveDraft, sendDraft: this.sendDraft,
+      jarvisCardOpen: s.jarvisCardOpen, toggleJarvisCard: this.toggleJarvisCard,
+      jarvisCardClass: s.jarvisCardOpen ? 'lo-jarvis-card lo-jarvis-open' : 'lo-jarvis-card',
     };
   }
 }
