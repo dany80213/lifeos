@@ -27,6 +27,12 @@ python3 scripts/bump-version.py patch --fixed "Cosa è stato corretto" --changed
 
 <!-- nuove versioni sotto questa riga -->
 
+## 1.14.1 — 2026-10-25
+
+**Corretto**
+- Rinnovo automatico sull'iPhone: il progetto Xcode viene rigenerato a ogni rinnovo, così include i file nuovi
+
+
 ## 1.14.0 — 2026-10-18
 
 **Aggiunto**

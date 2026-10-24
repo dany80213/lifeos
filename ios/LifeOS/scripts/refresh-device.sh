@@ -85,8 +85,8 @@ log "rinnovo: scade tra ${left} h, rebuild e reinstallo"
 case "$ROOT" in "$CLONE"/*) git -C "$CLONE" pull --ff-only -q >> "$LOG" 2>&1 || log "git pull fallito, uso la copia che ho" ;; esac
 APP="$ROOT/build-device/Build/Products/Debug-iphoneos/LifeOS.app"
 cd "$ROOT" || exit 1
-# The Xcode project is generated (not in git), so a fresh clone has none.
-[ -d LifeOS.xcodeproj ] || xcodegen generate >> "$LOG" 2>&1
+# The Xcode project is generated (not in git): regenerate it every time, or new source files are missed.
+xcodegen generate >> "$LOG" 2>&1
 # Xcode reuses a still-valid profile, which would leave the expiry exactly where it was. Drop this
 # app's cached profiles so -allowProvisioningUpdates asks Apple for a fresh 7-day one.
 for f in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/"*.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision; do
