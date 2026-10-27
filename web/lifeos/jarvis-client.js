@@ -221,6 +221,30 @@
     return res.json();
   }
 
+  async function postJson(path, body) {
+    const dir = location.pathname.replace(/\/[^/]*$/, '');
+    const res = await fetch(dir + path, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const out = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(out?.error || 'operazione non riuscita');
+    return out;
+  }
+
+  /** Bank statement (BuddyBank .xls, Revolut .csv, Satispay .xlsx) -> the bridge files it; see lifeos-import in server.mjs. */
+  function importStatement(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('file non leggibile'));
+      reader.onload = () => postJson('/api/lifeos-import', { data: String(reader.result).split(',')[1] || '' }).then(resolve, reject);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** Answer to one "Da classificare" pop-up: { kind: 'category'|'amici'|'ignore', category? }. */
+  const resolveImport = (id, choice) => postJson('/api/lifeos-import-resolve', { id, choice });
+
   /** Add/edit/remove a row in Finanze's accounts/liabilities/assets — see lifeos-finance in server.mjs. */
   async function financeOp(collection, op, args) {
     const dir = location.pathname.replace(/\/[^/]*$/, '');
@@ -332,7 +356,7 @@
   })();
 
   window.LifeOSJarvis = {
-    ask, fetchData, addReminder, completeReminder, financeOp, getSectionAssignments, setSectionAssignments, getVisibleCalendars, setVisibleCalendars,
+    ask, fetchData, addReminder, completeReminder, financeOp, importStatement, resolveImport, getSectionAssignments, setSectionAssignments, getVisibleCalendars, setVisibleCalendars,
     getSettings, setSettings, getProfile, onProfile, setProfile, getTheme, setTheme, disconnectFatsecret,
   };
 })();

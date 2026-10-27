@@ -346,6 +346,49 @@
           </div>
         </div>
       </div>
+
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">TRA AMICI</div>
+          <div style="{{ styles.txMeta }}">Soldi dati e ricevuti dagli amici, fuori da spese ed entrate. Verde: ti devono. Rosso: devi tu.</div>
+          <sc-if value="{{ friends.isEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.txMeta }}">Nessun movimento tra amici: quando importi un estratto e scegli «Tra amici», compare qui.</div>
+          </sc-if>
+          <div style="{{ styles.txList }}">
+            <sc-for list="{{ friends.list }}" as="f" hint-placeholder-count="3">
+              <div>
+                <div style="{{ styles.txRow }}" onClick="{{ f.toggle }}">
+                  <div style="{{ styles.txEmoji }}">👤</div>
+                  <div style="{{ styles.txInfo }}">
+                    <div style="{{ styles.txCategory }}">{{ f.name }}</div>
+                    <div style="{{ styles.txMeta }}">{{ f.meta }}</div>
+                  </div>
+                  <div style="{{ f.netStyle }}">{{ f.netLabel }}</div>
+                </div>
+                <sc-if value="{{ f.isOpen }}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{ f.rows }}" as="r" hint-placeholder-count="2">
+                    <div style="{{ styles.txRow }}">
+                      <div style="{{ styles.txInfo }}"><div style="{{ styles.txMeta }}">{{ r.meta }}</div></div>
+                      <div style="{{ r.amountStyle }}">{{ r.amountLabel }}</div>
+                      <div style="{{ styles.rowDeleteBtn }}" onClick="{{ r.remove }}" title="Elimina">×</div>
+                    </div>
+                  </sc-for>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">IMPORTA ESTRATTO CONTO</div>
+          <div style="{{ styles.txMeta }}">Scegli il file di BuddyBank (.xls), Revolut (.csv) o Satispay (.xlsx): riconosco la banca, registro i movimenti nel conto giusto e ti chiedo solo quando ho un dubbio.</div>
+          <input type="file" accept=".xls,.xlsx,.csv" multiple style="{{ styles.txInput }}" onChange="{{ importer.onFiles }}"></input>
+          <div style="{{ styles.txMeta }}">{{ importer.status }}</div>
+          <sc-if value="{{ importer.hasPending }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.importPendingBtn }}" onClick="{{ importer.reopen }}">{{ importer.pendingLabel }}</div>
+          </sc-if>
+        </div>
+      </div>
     </div>
     </sc-if>
 
@@ -566,6 +609,34 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ question.open }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.modalBackdrop }}">
+      <div style="{{ styles.modalCard }}">
+        <div style="{{ styles.cardTitle }}">{{ question.counter }}</div>
+        <div style="{{ styles.modalTitle }}">{{ question.title }}</div>
+        <div style="{{ question.amountStyle }}">{{ question.amountLabel }}</div>
+        <div style="{{ styles.txMeta }}">{{ question.meta }}</div>
+        <sc-if value="{{ question.person }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.modalPrimary }}" onClick="{{ question.amici }}">👥 Tra amici</div>
+        </sc-if>
+        <div style="{{ styles.cardTitle }}">Categoria</div>
+        <div style="{{ styles.modalChips }}">
+          <sc-for list="{{ question.categories }}" as="c" hint-placeholder-count="8">
+            <div style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.modalRow }}">
+          <sc-if value="{{ question.notPerson }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.modalGhost }}" onClick="{{ question.amici }}">👥 Tra amici</div>
+          </sc-if>
+          <div style="{{ styles.modalGhost }}" onClick="{{ question.ignore }}">↔ Giroconto: ignora</div>
+          <div style="{{ styles.modalGhost }}" onClick="{{ question.later }}">Dopo</div>
+        </div>
+        <div style="{{ styles.txMeta }}">Ricordo la scelta: la prossima volta non te lo chiedo più.</div>
+      </div>
+    </div>
+  </sc-if>
+
   <div style="{{ styles.chatBarWrap }}" class="lo-chatbar">
     <sc-if value="{{ !chatBarOpen }}" hint-placeholder-val="{{ false }}">
       <div class="lo-chatbar-fab" onClick="{{ openChatBar }}">✦</div>
@@ -686,6 +757,7 @@ class Component extends DCLogic {
     newAsset: { name: '', symbol: '', assetClass: 'crypto', qty: '', purchaseDate: '' },
     newAssetError: null,
     realTransactions: [],
+    friendTx: [], pendingImports: [], importStatus: '', questionDismissed: false, expandedFriend: null,
     recurringBuys: [],
     newRecurring: { name: '', symbol: '', assetClass: 'crypto', amountEur: '', frequency: 'monthly' },
     newRecurringError: null,
@@ -705,6 +777,7 @@ class Component extends DCLogic {
         catalog: data.financeCatalog || { banks: [], categories: [] },
         transactions: (data.transactions || []).map(r => this.txView(r, (data.financeCatalog || { categories: [] }).categories)).sort((a, b) => b.ts - a.ts),
         realTransactions: data.transactions || [],
+        friendTx: data.friendTx || [], pendingImports: data.pendingImports || [],
       };
       this.setState(patch);
     }).catch(() => {});
@@ -920,6 +993,45 @@ class Component extends DCLogic {
     }));
   };
 
+  // --- statement import -------------------------------------------------
+  reloadFinance = () => window.LifeOSJarvis.fetchData().then(data => {
+    const cats = (data.financeCatalog || { categories: [] }).categories;
+    this.setState({
+      accounts: data.accounts || [], catalog: data.financeCatalog || this.state.catalog,
+      transactions: (data.transactions || []).map(r => this.txView(r, cats)).sort((a, b) => b.ts - a.ts),
+      realTransactions: data.transactions || [],
+      friendTx: data.friendTx || [], pendingImports: data.pendingImports || [],
+    });
+  }).catch(() => {});
+  importFiles = async (e) => {
+    const files = [...e.target.files];
+    e.target.value = '';
+    if (!files.length) return;
+    this.setState({ importStatus: 'Importo…', questionDismissed: false });
+    const lines = [];
+    for (const f of files) {
+      try {
+        const r = await window.LifeOSJarvis.importStatement(f);
+        lines.push(r.account + ': ' + r.added + ' nuovi, ' + r.duplicates + ' già presenti, ' + r.ownTransfers + ' giroconti ignorati' + (r.toAsk ? ', ' + r.toAsk + ' da classificare' : '') + '.');
+      } catch (err) { lines.push(f.name + ': ' + err.message + '.'); }
+    }
+    this.setState({ importStatus: lines.join(' ') });
+    this.reloadFinance();
+  };
+  answerPending = (kind, category) => {
+    const q = this.state.pendingImports[0];
+    if (!q || this._answering) return;
+    this._answering = true;
+    window.LifeOSJarvis.resolveImport(q.id, { kind, category })
+      .then(() => this.reloadFinance())
+      .catch(err => window.alert(err.message))
+      .finally(() => { this._answering = false; });
+  };
+  removeFriendRow = (id) => {
+    window.LifeOSJarvis.financeOp('friendTx', 'remove', { id }).catch(() => {});
+    this.setState(s => ({ friendTx: s.friendTx.filter(r => r.id !== id) }));
+  };
+
   renderVals() {
     const s = this.state;
     const t = tok(s.theme);
@@ -929,6 +1041,54 @@ class Component extends DCLogic {
       border: `1px solid ${t.glassBorder}`, boxShadow: t.shadow,
     };
     const card = { ...glass, borderRadius: 16, padding: 28, display: 'flex', flexDirection: 'column', gap: 18, color: t.text1, boxSizing: 'border-box' };
+    const fmtEur2 = (n) => n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+    const friendGroups = {};
+    s.friendTx.forEach(r => { (friendGroups[r.friend.toLowerCase()] = friendGroups[r.friend.toLowerCase()] || []).push(r); });
+    const friends = {
+      isEmpty: s.friendTx.length === 0,
+      // net = what they owe you: what you sent them minus what they sent you.
+      list: Object.keys(friendGroups).map(k => {
+        const rows = friendGroups[k].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const net = -rows.reduce((sum, r) => sum + r.amount, 0);
+        return {
+          name: rows[0].friend, net, isOpen: s.expandedFriend === k,
+          meta: Math.abs(net) < 0.005 ? 'In pari' : (net > 0 ? 'Ti deve questa somma' : 'Gli devi questa somma') + ' · ' + rows.length + ' movimenti',
+          netLabel: (net >= 0 ? '+' : '−') + fmtEur2(Math.abs(net)),
+          netStyle: { fontSize: 14, fontWeight: 700, color: Math.abs(net) < 0.005 ? t.text3 : net > 0 ? t.green : t.red },
+          toggle: () => this.setState(st => ({ expandedFriend: st.expandedFriend === k ? null : k })),
+          rows: rows.map(r => ({
+            meta: new Date(r.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + (r.account ? ' · ' + r.account : ''),
+            amountLabel: (r.amount >= 0 ? '+' : '−') + fmtEur2(Math.abs(r.amount)),
+            amountStyle: { fontSize: 13, fontWeight: 600, color: r.amount >= 0 ? t.green : t.text1 },
+            remove: () => this.removeFriendRow(r.id),
+          })),
+        };
+      }).sort((a, b) => Math.abs(b.net) - Math.abs(a.net)),
+    };
+    const pend = s.pendingImports;
+    const importer = {
+      onFiles: this.importFiles, status: s.importStatus,
+      hasPending: pend.length > 0, pendingLabel: pend.length + ' movimenti da classificare',
+      reopen: () => this.setState({ questionDismissed: false }),
+    };
+    const q = pend[0];
+    const qIn = q && q.type === 'entrata';
+    const chipStyle = (suggested) => ({ padding: '8px 12px', borderRadius: 999, background: t.glassBgSoft, border: `1px solid ${suggested ? t.accent : t.glassBorder}`, color: t.text1, fontSize: 13, cursor: 'pointer' });
+    const question = {
+      open: !!q && !s.questionDismissed,
+      counter: pend.length + ' da classificare' + (q ? ' · ' + q.account : ''),
+      title: q ? q.description : '',
+      amountLabel: q ? (qIn ? '+' : '−') + fmtEur2(q.amount) : '',
+      amountStyle: { fontSize: 30, fontWeight: 800, color: qIn ? t.green : t.text1 },
+      meta: q ? [new Date(q.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }), q.detail && q.detail !== q.description ? q.detail : ''].filter(Boolean).join(' · ') : '',
+      person: !!(q && q.person), notPerson: !!(q && !q.person),
+      categories: q ? this.categoriesFor(qIn ? 'entrata' : 'spesa').map(c => ({
+        label: (c.emoji ? c.emoji + ' ' : '') + c.name, style: chipStyle(c.name === q.suggestion), pick: () => this.answerPending('category', c.name),
+      })) : [],
+      amici: () => this.answerPending('amici'), ignore: () => this.answerPending('ignore'),
+      later: () => this.setState({ questionDismissed: true }),
+    };
+
     const isPanoramica = s.activeTab === 'panoramica';
     const isInvestimenti = s.activeTab === 'investimenti';
 
@@ -1110,6 +1270,14 @@ class Component extends DCLogic {
       txCategory: { fontSize: 13.5, fontWeight: 600, color: t.text1 },
       txMeta: { fontSize: 12, color: t.text3, marginTop: 2 },
 
+      importPendingBtn: { padding: '10px 14px', borderRadius: 10, background: t.accent, color: 'white', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'center' },
+      modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 16 },
+      modalCard: { ...glass, borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560, width: '100%', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', color: t.text1, background: t.dark ? 'rgb(28,30,40)' : 'rgb(250,251,253)' },
+      modalTitle: { fontSize: 20, fontWeight: 700 },
+      modalPrimary: { padding: '12px 14px', borderRadius: 12, background: t.accent, color: 'white', fontWeight: 700, textAlign: 'center', cursor: 'pointer' },
+      modalChips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+      modalRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+      modalGhost: { padding: '9px 14px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}`, fontSize: 13, cursor: 'pointer', color: t.text2 },
       monthlySummaryRow: { display: 'flex', gap: 24 },
       monthlySummaryBlock: { flex: 1 },
       monthlySummaryLabel: { fontSize: 12, color: t.text2 },
@@ -1590,6 +1758,7 @@ class Component extends DCLogic {
 
     return {
       styles, timeStr, dateStr, btc, eunl, toggleTheme: this.toggleTheme,
+      friends, importer, question,
       txForm, bankPicker, transactions, monthlyChart, monthlySummary, currentMonthLabel,
       isPanoramica, isInvestimenti, tabPill,
       hero, chart, periodPill,
