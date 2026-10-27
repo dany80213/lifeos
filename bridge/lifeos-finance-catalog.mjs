@@ -25,6 +25,7 @@ export const BANKS = [
   { id: 'widiba', name: 'Widiba', domain: 'widiba.it', color: '#FF5A00', initials: 'WD' },
   { id: 'poste', name: 'Poste Italiane', domain: 'poste.it', color: '#FFD500', initials: 'PI', darkText: true },
   { id: 'revolut', name: 'Revolut', domain: 'revolut.com', color: '#0666EB', initials: 'R' },
+  { id: 'buddybank', name: 'BuddyBank', domain: 'buddybank.com', color: '#FF5B00', initials: 'BU' },
   { id: 'n26', name: 'N26', domain: 'n26.com', color: '#36A18B', initials: 'N26' },
   { id: 'hype', name: 'Hype', domain: 'hype.it', color: '#00B0F0', initials: 'H' },
   { id: 'satispay', name: 'Satispay', domain: 'satispay.com', color: '#E8352B', initials: 'S' },

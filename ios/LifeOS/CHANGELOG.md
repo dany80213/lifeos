@@ -27,6 +27,14 @@ python3 scripts/bump-version.py patch --fixed "Cosa è stato corretto" --changed
 
 <!-- nuove versioni sotto questa riga -->
 
+## 1.15.0 — 2026-10-27
+
+**Aggiunto**
+- Importa estratto conto: scegli il file di BuddyBank, Revolut o Satispay e LifeOS riconosce la banca, registra i movimenti nel conto giusto e aggiorna il saldo
+- Sezione «Tra amici» in Finanze: i movimenti con gli amici restano fuori da spese ed entrate e mostrano chi deve quanto a chi
+- Popup «Da classificare» quando un movimento è dubbio: scegli categoria, tra amici o giroconto, e la scelta viene ricordata
+
+
 ## 1.14.1 — 2026-10-25
 
 **Corretto**

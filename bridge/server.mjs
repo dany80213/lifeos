@@ -54,7 +54,7 @@ import { getBriefing } from './lifeos-briefing.mjs'
 import { currentWeekSummary, formatWeekSummary, recentWeekSummaries } from './lifeos-review.mjs'
 import { lifeosCronServer } from './lifeos-cron.mjs'
 import {
-  addAccount, addAsset, addCategory, removeCategory, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
+  addAccount, addAsset, addCategory, importStatement, resolveImport, removeFriendTx, removeCategory, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
   clearFatsecretAuth, completeReminder, getFatsecretAuth, getFitnessTrend, getSettings, getStore, importFatsecretEntries,
   markMealSynced, setFatsecretAuth, setFitnessTrend, setHealthSnapshot, summarizeMealsForToday, updateSettings,
   removeAccount, removeAsset, removeAssetLot, removeHabit, removeLiability, removeRecurringBuy, removeTransaction, removeWorkout,
@@ -1598,6 +1598,7 @@ const handleRequest = async (req, res) => {
       liabilities: { add: addLiability, update: updateLiability, remove: removeLiability },
       assets: { add: addAsset, remove: removeAsset },
       transactions: { add: addTransaction, remove: removeTransaction },
+      friendTx: { remove: removeFriendTx },
       categories: { add: addCategory, remove: removeCategory },
       recurringBuys: { add: addRecurringBuy, update: updateRecurringBuy, remove: removeRecurringBuy },
       habits: { add: addHabit, update: updateHabit, remove: removeHabit },
@@ -1614,6 +1615,47 @@ const handleRequest = async (req, res) => {
       : payload.op === 'update' ? await fn(Number(payload.id), payload.data ?? {})
       : await fn(payload.data ?? {})
     res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+    return res.end(JSON.stringify(result))
+  }
+
+  // Bank-statement import: { data: <base64 of the .xls/.xlsx/.csv>, dryRun? }. The bank is
+  // recognised from the file (see lifeos-import.mjs); the answer says what was filed where.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-import`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 12 * 1024 * 1024) break
+    }
+    try {
+      const { data, dryRun } = JSON.parse(body || '{}')
+      const result = await importStatement(Buffer.from(String(data ?? ''), 'base64'), { dryRun: !!dryRun })
+      res.writeHead(200, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(result))
+    } catch (err) {
+      res.writeHead(400, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // The answer to one import pop-up: { id, choice: { kind: 'category'|'amici'|'ignore', category? } }.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-import-resolve`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 8 * 1024) break
+    }
+    let payload
+    try { payload = JSON.parse(body || '{}') } catch { res.writeHead(400, cors); return res.end('bad json') }
+    const result = await resolveImport(Number(payload.id), payload.choice)
+    res.writeHead(result.error ? 400 : 200, { ...cors, 'content-type': 'application/json' })
     return res.end(JSON.stringify(result))
   }
 

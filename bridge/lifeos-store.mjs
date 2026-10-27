@@ -25,7 +25,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const STORE_PATH = fileURLToPath(new URL('../data/lifeos-store.json', import.meta.url))
+const STORE_PATH = process.env.LIFEOS_STORE_PATH || fileURLToPath(new URL('../data/lifeos-store.json', import.meta.url))
 
 const EMPTY_STORE = {
   transactions: [], meals: [], reminders: [], health: {},
@@ -36,6 +36,10 @@ const EMPTY_STORE = {
   // The user's own movement categories, on top of the built-in ones in
   // lifeos-finance-catalog.mjs: { id, name, kind: 'spesa'|'entrata', emoji }.
   categories: [],
+  // Money lent/borrowed between friends, kept out of spese/entrate: { id, friend, amount (+ they
+  // paid me, − I paid), account, date, ref }. Imports waiting for the user's answer (pendingImports)
+  // and the answers themselves (importRules) — see lifeos-import.mjs.
+  friendTx: [], pendingImports: [], importRules: {},
   // Home page's habit checklist — previously 5 hardcoded demo rows in
   // LifeOS.dc.html, always at a fixed "done" state. Real and empty by
   // default; the list itself is edited from Profilo, "done" is per-day
@@ -137,6 +141,7 @@ function withStore(mutate) {
 export const getStore = () => load()
 
 import { findBank, findCategory } from './lifeos-finance-catalog.mjs'
+import { applyImport, parseStatement, planImport, resolvePending, summarize } from './lifeos-import.mjs'
 
 /**
  * `date` may be 'YYYY-MM-DD' (the day the movement happened — stored at local
@@ -171,6 +176,28 @@ export const addTransaction = ({ tx_type, amount, category, account, description
     }
     store.transactions.push(record)
     return record
+  })
+
+/**
+ * Reads a bank statement (see lifeos-import.mjs), files its movements under the right
+ * account and refreshes that account's balance. `dryRun` only reports what would happen.
+ */
+export async function importStatement(buffer, { dryRun = false } = {}) {
+  const parsed = parseStatement(buffer)
+  if (dryRun) return summarize(parsed, planImport(parsed, await load()), null)
+  return withStore((store) => {
+    const plan = planImport(parsed, store)
+    return summarize(parsed, plan, applyImport(store, parsed, plan))
+  })
+}
+
+export const resolveImport = (id, choice) => withStore((store) => resolvePending(store, id, choice))
+
+export const removeFriendTx = (id) =>
+  withStore((store) => {
+    const before = store.friendTx.length
+    store.friendTx = store.friendTx.filter((r) => r.id !== id)
+    return { removed: store.friendTx.length < before }
   })
 
 export const removeTransaction = (id) =>

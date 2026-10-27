@@ -4,6 +4,7 @@ import Charts
 struct FinanzeView: View {
     @EnvironmentObject var app: AppState
     @State private var sheet: FinSheet?
+    @State private var asking = false
 
     enum FinSheet: String, Identifiable { case account, asset, liability, tx, recurring; var id: String { rawValue } }
 
@@ -32,15 +33,20 @@ struct FinanzeView: View {
             Row([2, 1]) { summaryCard; accountsCard }
             Row([2, 1]) { assetsCard; liabilitiesCard }
             Row([2, 1]) { txCard; recurringCard }
+            Row([2, 1]) { FriendsCard(); StatementImportCard(asking: $asking) }
             #else
             summaryCard
             accountsCard
             assetsCard
             liabilitiesCard
             txCard
+            FriendsCard()
+            StatementImportCard(asking: $asking)
             recurringCard
             #endif
         }
+        .sheet(isPresented: $asking) { ImportQuestionSheet() }
+        .task(id: app.pendingImports.count) { if !app.pendingImports.isEmpty { asking = true } }
         .sheet(item: $sheet) { s in
             switch s {
             case .account: AccountForm()
