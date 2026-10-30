@@ -193,6 +193,12 @@ function decide(row, type, ctx) {
   return { kind: 'ask', suggestion: 'Altre entrate' }
 }
 
+/** The category a merchant's expense would get here, or null when we have no idea (used by receipts too). */
+export function suggestCategory(label, store) {
+  const d = decide({ label, detail: label }, 'spesa', { store, learned: learnedCategories(store) })
+  return d.kind === 'category' ? d.category : null
+}
+
 // ---- plan + write --------------------------------------------------------------------------------
 
 const refOf = (bank, row, n) =>
@@ -206,7 +212,9 @@ export function planImport(parsed, store) {
   // Number repeats of an otherwise identical row oldest-first, so a later, overlapping export
   // gives the same rows the same ref no matter how many newer rows were added in front.
   const oldestFirst = parsed.rows.length > 1 && parsed.rows[0].date > parsed.rows.at(-1).date ? [...parsed.rows].reverse() : parsed.rows
-  const out = { add: [], ask: [], duplicates: 0, own: 0, empty: 0 }
+  const receipts = (store.transactions ?? []).filter((t) => t.source === 'scontrino' && !t.ref)
+  const claimed = new Set()
+  const out = { add: [], ask: [], receipts: [], duplicates: 0, own: 0, empty: 0 }
   for (const row of oldestFirst) {
     const sig = `${row.date}|${row.time}|${row.amount}|${row.detail}`
     const n = seen.get(sig) ?? 0
@@ -216,6 +224,15 @@ export function planImport(parsed, store) {
     if (known.has(ref)) { out.duplicates++; continue }
     if (row.own) { out.own++; continue }
     const type = row.amount < 0 ? 'spesa' : 'entrata'
+    // Already entered from a photo of the receipt: same amount within 3 days. The movement stays as
+    // the user confirmed it and takes this row's ref, so it counts as "già presente" from now on.
+    const receipt = type === 'spesa' && receipts.find((t) => !claimed.has(t.id) && t.amount === Math.abs(row.amount) && Math.abs(new Date(t.date) - new Date(`${row.date}T12:00:00`)) <= 3 * 864e5)
+    if (receipt) {
+      claimed.add(receipt.id)
+      out.receipts.push({ id: receipt.id, ref })
+      out.duplicates++
+      continue
+    }
     const base = { ref, type, amount: Math.abs(row.amount), date: row.date, description: row.label.slice(0, 200), detail: row.detail.slice(0, 300), person: !!row.person }
     const d = decide(row, type, ctx)
     if (d.kind === 'ignore') out.own++
@@ -248,6 +265,10 @@ export function applyImport(store, parsed, plan) {
     store.accounts.push(account)
   }
   for (const t of plan.add) commit(store, account.name, t)
+  for (const { id, ref } of plan.receipts) {
+    const t = store.transactions.find((x) => x.id === id)
+    if (t) { t.ref = ref; t.account ||= account.name }
+  }
   for (const q of plan.ask) store.pendingImports.push({ ...q, id: nextId(), account: account.name })
   const latest = parsed.rows.reduce((m, r) => (r.date > m ? r.date : m), '')
   // A balance only moves forward: re-dropping an old export must not roll it back.

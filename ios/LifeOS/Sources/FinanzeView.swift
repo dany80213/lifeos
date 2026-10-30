@@ -5,8 +5,9 @@ struct FinanzeView: View {
     @EnvironmentObject var app: AppState
     @State private var sheet: FinSheet?
     @State private var asking = false
+    @State private var tab = 0
 
-    enum FinSheet: String, Identifiable { case account, asset, liability, tx, recurring; var id: String { rawValue } }
+    enum FinSheet: String, Identifiable { case account, asset, liability, tx, receipt, recurring; var id: String { rawValue } }
 
     private var accounts: [JSON] { app.data["accounts"].array }
     private var assets: [JSON] { app.data["assets"].array }
@@ -29,6 +30,24 @@ struct FinanzeView: View {
 
     var body: some View {
         Screen(title: "Finanze", chat: .finanze) {
+            Picker("", selection: $tab) { Text("Conti").tag(0); Text("Budget").tag(1); Text("Fiscale").tag(2) }.pickerStyle(.segmented)
+            if tab == 1 { BudgetSection() } else if tab == 2 { FiscalSection() } else { overview }
+        }
+        .sheet(isPresented: $asking) { ImportQuestionSheet() }
+        .task(id: app.pendingImports.count) { if !app.pendingImports.isEmpty { asking = true } }
+        .sheet(item: $sheet) { s in
+            switch s {
+            case .account: AccountForm()
+            case .asset: AssetForm()
+            case .liability: LiabilityForm()
+            case .tx: TxForm(accounts: accounts)
+            case .receipt: ReceiptSheet(accounts: accounts)
+            case .recurring: RecurringForm()
+            }
+        }
+    }
+
+    @ViewBuilder private var overview: some View {
             #if os(macOS)
             Row([2, 1]) { summaryCard; accountsCard }
             Row([2, 1]) { assetsCard; liabilitiesCard }
@@ -44,18 +63,6 @@ struct FinanzeView: View {
             StatementImportCard(asking: $asking)
             recurringCard
             #endif
-        }
-        .sheet(isPresented: $asking) { ImportQuestionSheet() }
-        .task(id: app.pendingImports.count) { if !app.pendingImports.isEmpty { asking = true } }
-        .sheet(item: $sheet) { s in
-            switch s {
-            case .account: AccountForm()
-            case .asset: AssetForm()
-            case .liability: LiabilityForm()
-            case .tx: TxForm(accounts: accounts)
-            case .recurring: RecurringForm()
-            }
-        }
     }
 
     private var summaryCard: some View {
@@ -185,7 +192,12 @@ struct FinanzeView: View {
         let spent = monthTx.filter { $0["type"].str == "spesa" }.reduce(0) { $0 + $1["amount"].num }
         let earned = monthTx.filter { $0["type"].str == "entrata" }.reduce(0) { $0 + $1["amount"].num }
         return Card {
-            header("MOVIMENTI · \(Fmt.it(app.now, "MMMM").uppercased())", .tx)
+            HStack {
+                CardLabel("MOVIMENTI · \(Fmt.it(app.now, "MMMM").uppercased())"); Spacer()
+                Button { sheet = .receipt } label: { Image(systemName: "doc.viewfinder").font(.title3) }
+                    .accessibilityLabel("Spesa da scontrino")
+                Button { sheet = .tx } label: { Image(systemName: "plus.circle.fill").font(.title3) }
+            }
             HStack {
                 stat("Entrate", earned, T.green)
                 stat("Spese", spent, T.red)
@@ -421,8 +433,30 @@ struct TxForm: View {
     @State private var desc = ""
     @State private var date = Date()
     @State private var pickingCategory = false
+    private let prefill: ReceiptPrefill?
+
+    init(accounts: [JSON], prefill: ReceiptPrefill? = nil) {
+        self.accounts = accounts
+        self.prefill = prefill
+        _amount = State(initialValue: prefill?.total.map { String(format: "%.2f", $0).replacingOccurrences(of: ".", with: ",") } ?? "")
+        _category = State(initialValue: prefill?.category ?? "")
+        _desc = State(initialValue: prefill?.merchant ?? "")
+        _date = State(initialValue: prefill?.date ?? Date())
+    }
 
     private var categoryJSON: JSON? { FinanceCatalog.category(category, in: app.data) }
+
+    /// Fields the receipt didn't give, so the user knows what to look at before saving.
+    private var receiptNote: String? {
+        guard let p = prefill else { return nil }
+        var missing: [String] = []
+        if p.total == nil { missing.append("il totale") }
+        if p.date == nil { missing.append("la data") }
+        if p.merchant.isEmpty { missing.append("il negozio") }
+        if p.category.isEmpty { missing.append("la categoria") }
+        let lead = missing.isEmpty ? "Controlla i dati letti dallo scontrino." : "Non ho letto \(missing.joined(separator: ", ")): completa a mano."
+        return p.usage.isEmpty ? lead : "\(lead) \(p.usage)."
+    }
 
     private func chip(_ title: String, bank: JSON?, name: String, on: Bool, _ tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
@@ -437,13 +471,18 @@ struct TxForm: View {
     }
 
     var body: some View {
-        FormShell(title: "Nuovo movimento", canSave: Fmt.parse(amount) > 0) {
-            let r = await app.financeOp("transactions", "add", data: [
+        FormShell(title: prefill == nil ? "Nuovo movimento" : "Spesa da scontrino", canSave: Fmt.parse(amount) > 0) {
+            var fields: [String: JSON] = [
                 "tx_type": .string(kind), "amount": .number(Fmt.parse(amount)), "category": .string(category),
                 "account": .string(account), "description": .string(desc), "date": .string(Fmt.dayKey(date)),
-            ])
+            ]
+            if prefill != nil { fields["source"] = .string("scontrino") }
+            let r = await app.financeOp("transactions", "add", data: .object(fields))
             return r != nil
         } content: {
+            if let receiptNote {
+                Text(receiptNote).font(.footnote).foregroundStyle(T.text2).frame(maxWidth: .infinity, alignment: .leading)
+            }
             Picker("Tipo", selection: $kind) { Text("Spesa").tag("spesa"); Text("Entrata").tag("entrata") }.pickerStyle(.segmented)
             Field(placeholder: "Importo", text: $amount, keyboard: .decimalPad)
             Button { pickingCategory = true } label: {

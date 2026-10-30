@@ -8,8 +8,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.15.0"
-    CURRENT_PROJECT_VERSION: "33"
+    MARKETING_VERSION: "1.18.0"
+    CURRENT_PROJECT_VERSION: "37"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
 targets:
@@ -39,6 +39,7 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_NSHealthShareUsageDescription: LifeOS legge passi, calorie, sonno, peso e battito da Apple Salute per mostrarli nella sezione Salute.
         INFOPLIST_KEY_NSRemindersFullAccessUsageDescription: LifeOS legge e aggiorna i tuoi promemoria per mostrarli nella sessione e aggiungerne di nuovi.
+        INFOPLIST_KEY_NSCameraUsageDescription: LifeOS usa la fotocamera per leggere gli scontrini e compilare la spesa.
         INFOPLIST_KEY_NSRemindersUsageDescription: LifeOS legge e aggiorna i tuoi promemoria per mostrarli nella sessione e aggiungerne di nuovi.
   LifeOSMac:
     type: application

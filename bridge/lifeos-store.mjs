@@ -40,6 +40,13 @@ const EMPTY_STORE = {
   // paid me, − I paid), account, date, ref }. Imports waiting for the user's answer (pendingImports)
   // and the answers themselves (importRules) — see lifeos-import.mjs.
   friendTx: [], pendingImports: [], importRules: {},
+  // Finanze's Budget: one monthly limit per spending category { id, category, amount } and the savings
+  // goals { id, name, emoji, target, saved, deadline } — the numbers on top are computed in lifeos-budget.mjs.
+  budgets: [], goals: [],
+  // Finanze's Fiscale (730 + ISEE estimates, see lifeos-fiscal.mjs): the household and income the user gave,
+  // and the properties owned { id, name, value (IMU value), share (% owned), mortgage (residual), main }.
+  fiscal: { adults: 1, children: 0, adultChildren: 0, childrenOver21: 0, income: 0, employee: true, bothWork: false, withholdings: 0, mortgageInterest: 0, donations: 0, mobiliare: null },
+  properties: [],
   // Home page's habit checklist — previously 5 hardcoded demo rows in
   // LifeOS.dc.html, always at a fixed "done" state. Real and empty by
   // default; the list itself is edited from Profilo, "done" is per-day
@@ -157,7 +164,19 @@ function movementDate(date) {
   return new Date().toISOString()
 }
 
-export const addTransaction = ({ tx_type, amount, category, account, description, date }) =>
+/**
+ * Counts one receipt photo sent to Gemini on the quota's day, and remembers the limit when Gemini
+ * states it in a 429: Google has no API for the remaining quota, so this is how we learn it.
+ */
+export const recordReceiptScan = (day, { limit = null, perDay = false, counted = true } = {}) =>
+  withStore((store) => {
+    const u = store.receiptUsage ?? {}
+    const count = (u.day === day ? u.count ?? 0 : 0) + (counted ? 1 : 0)
+    store.receiptUsage = { day, count, limit: perDay && limit ? limit : u.limit ?? null }
+    return store.receiptUsage
+  })
+
+export const addTransaction = ({ tx_type, amount, category, account, description, date, source }) =>
   withStore((store) => {
     const type = tx_type === 'entrata' ? 'entrata' : 'spesa'
     // A name that matches a known category is stored with its canonical spelling;
@@ -174,6 +193,8 @@ export const addTransaction = ({ tx_type, amount, category, account, description
       description: String(description || '').trim().slice(0, 200),
       date: movementDate(date),
     }
+    // Lets a later bank statement recognise this movement instead of adding it twice (see planImport).
+    if (source === 'scontrino') record.source = source
     store.transactions.push(record)
     return record
   })
@@ -375,6 +396,70 @@ export const updateAccount = accountOps.update
 export const removeAccount = accountOps.remove
 
 /** A new custom category; refuses duplicates of built-in or existing names. */
+// One limit per category: setting it again just changes the amount (amount 0 removes the limit).
+export const setBudget = ({ category, amount }) =>
+  withStore((store) => {
+    const name = String(category || '').trim()
+    const value = Math.max(0, Number(amount) || 0)
+    const known = findCategory(name, store.categories)
+    const canonical = known?.name || name
+    if (!canonical) return null
+    store.budgets = (store.budgets ?? []).filter((b) => b.category !== canonical)
+    if (value === 0) return { removed: true }
+    const record = { id: Date.now(), category: canonical, amount: value }
+    store.budgets.push(record)
+    return record
+  })
+export const removeBudget = (id) =>
+  withStore((store) => {
+    const before = (store.budgets ?? []).length
+    store.budgets = (store.budgets ?? []).filter((b) => b.id !== id)
+    return { removed: store.budgets.length < before }
+  })
+
+const goalOps = collectionOps('goals', ({ name, emoji, target, saved, deadline }) => ({
+  id: Date.now(),
+  name: String(name || 'Obiettivo').trim().slice(0, 80),
+  emoji: String(emoji || '').trim().slice(0, 4) || '🎯',
+  target: Math.max(0, Number(target) || 0),
+  saved: Math.max(0, Number(saved) || 0),
+  deadline: /^\d{4}-\d{2}-\d{2}$/.test(String(deadline || '')) ? deadline : '',
+}))
+export const addGoal = goalOps.add
+export const updateGoal = goalOps.update
+export const removeGoal = goalOps.remove
+
+// Household/income settings: only the fields that were sent change.
+export const setFiscal = (fields = {}) =>
+  withStore((store) => {
+    const next = { ...EMPTY_STORE.fiscal, ...store.fiscal }
+    const num = (v, min = 0) => Math.max(min, Number(v) || 0)
+    if ('adults' in fields) next.adults = Math.max(1, Math.round(num(fields.adults)))
+    if ('children' in fields) next.children = Math.round(num(fields.children))
+    if ('adultChildren' in fields) next.adultChildren = Math.round(num(fields.adultChildren))
+    if ('childrenOver21' in fields) next.childrenOver21 = Math.round(num(fields.childrenOver21))
+    for (const k of ['income', 'withholdings', 'mortgageInterest', 'donations']) if (k in fields) next[k] = num(fields[k])
+    if ('mobiliare' in fields) next.mobiliare = fields.mobiliare === '' || fields.mobiliare == null ? null : num(fields.mobiliare)
+    for (const k of ['employee', 'bothWork']) if (k in fields) next[k] = !!fields[k]
+    // The grown-up children can't exceed the children, nor those over 21 the grown-up ones.
+    next.adultChildren = Math.min(next.adultChildren ?? 0, next.children)
+    next.childrenOver21 = Math.min(next.childrenOver21 ?? 0, next.adultChildren)
+    store.fiscal = next
+    return next
+  })
+
+const propertyOps = collectionOps('properties', ({ name, value, share, mortgage, main }) => ({
+  id: Date.now(),
+  name: String(name || 'Immobile').trim().slice(0, 80),
+  value: Math.max(0, Number(value) || 0),
+  share: Math.min(100, Math.max(0, Number(share) || 100)),
+  mortgage: Math.max(0, Number(mortgage) || 0),
+  main: !!main,
+}))
+export const addProperty = propertyOps.add
+export const updateProperty = propertyOps.update
+export const removeProperty = propertyOps.remove
+
 export const addCategory = ({ name, kind, emoji }) =>
   withStore((store) => {
     const clean = String(name ?? '').trim().slice(0, 40)

@@ -54,17 +54,20 @@ import { getBriefing } from './lifeos-briefing.mjs'
 import { currentWeekSummary, formatWeekSummary, recentWeekSummaries } from './lifeos-review.mjs'
 import { lifeosCronServer } from './lifeos-cron.mjs'
 import {
-  addAccount, addAsset, addCategory, importStatement, resolveImport, removeFriendTx, removeCategory, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
+  addAccount, addAsset, addCategory, setBudget, removeBudget, setFiscal, addProperty, updateProperty, removeProperty, addGoal, updateGoal, removeGoal, importStatement, resolveImport, removeFriendTx, removeCategory, addHabit, addLiability, addMeal, addReminder, addRecurringBuy, addTransaction, addWorkout,
   clearFatsecretAuth, completeReminder, getFatsecretAuth, getFitnessTrend, getSettings, getStore, importFatsecretEntries,
-  markMealSynced, setFatsecretAuth, setFitnessTrend, setHealthSnapshot, summarizeMealsForToday, updateSettings,
+  markMealSynced, recordReceiptScan, setFatsecretAuth, setFitnessTrend, setHealthSnapshot, summarizeMealsForToday, updateSettings,
   removeAccount, removeAsset, removeAssetLot, removeHabit, removeLiability, removeRecurringBuy, removeTransaction, removeWorkout,
   updateAccount, updateHabit, updateLiability, updateRecurringBuy, updateWorkout,
 } from './lifeos-store.mjs'
 import { buildCatalog } from './lifeos-finance-catalog.mjs'
+import { summarizeBudget } from './lifeos-budget.mjs'
+import { summarizeFiscal } from './lifeos-fiscal.mjs'
 import { lookupDetails, lookupHistory, lookupPrices } from './market-prices.mjs'
 import { startRecurringBuyScheduler } from './recurring-buys.mjs'
 import { listCalendarColors, listCalendarNames, listEvents } from './lifeos-caldav.mjs'
 import { fetchCompiti, fetchVerifiche, startVerificheSyncScheduler } from './lifeos-didup.mjs'
+import { quotaDay, ReceiptQuotaError, scanReceipt } from './lifeos-receipt.mjs'
 import { ActionValidationError, refreshCalendarNames, refreshFinanceContext, runTool, systemPromptFor, toolsForSection } from './lifeos-tools.mjs'
 import { FatSecretError, getFoodDetail, searchFoods } from './lifeos-fatsecret.mjs'
 import {
@@ -1600,6 +1603,10 @@ const handleRequest = async (req, res) => {
       transactions: { add: addTransaction, remove: removeTransaction },
       friendTx: { remove: removeFriendTx },
       categories: { add: addCategory, remove: removeCategory },
+      budgets: { add: setBudget, remove: removeBudget },
+      goals: { add: addGoal, update: updateGoal, remove: removeGoal },
+      fiscal: { add: setFiscal },
+      properties: { add: addProperty, update: updateProperty, remove: removeProperty },
       recurringBuys: { add: addRecurringBuy, update: updateRecurringBuy, remove: removeRecurringBuy },
       habits: { add: addHabit, update: updateHabit, remove: removeHabit },
       workouts: { add: addWorkout, update: updateWorkout, remove: removeWorkout },
@@ -1638,6 +1645,35 @@ const handleRequest = async (req, res) => {
     } catch (err) {
       res.writeHead(400, { ...cors, 'content-type': 'application/json' })
       return res.end(JSON.stringify({ error: err?.message ?? String(err) }))
+    }
+  }
+
+  // Photo of a receipt: { data: <base64 JPEG/PNG> }. Answers what could be read, nothing is saved
+  // until the user confirms the movement form. The photo itself is never stored.
+  if (req.method === 'POST' && new URL(req.url, 'http://x').pathname === `${BASE_PATH}/api/lifeos-receipt-scan`) {
+    if (LIFEOS_AUTH_CONFIGURED && !sessionUserFor(req)) {
+      res.writeHead(401, cors)
+      return res.end('unauthorized')
+    }
+    let body = ''
+    for await (const chunk of req) {
+      body += chunk
+      if (body.length > 8 * 1024 * 1024) break
+    }
+    const answer = (status, payload) => {
+      res.writeHead(status, { ...cors, 'content-type': 'application/json' })
+      return res.end(JSON.stringify(payload))
+    }
+    try {
+      const { data } = JSON.parse(body || '{}')
+      const { geminiApiKey } = await getSettings()
+      const result = await scanReceipt(Buffer.from(String(data ?? ''), 'base64'), { store: await getStore(), apiKey: geminiApiKey })
+      return answer(200, { ...result, usage: await recordReceiptScan(quotaDay()) })
+    } catch (err) {
+      if (err instanceof ReceiptQuotaError) {
+        return answer(429, { error: err.message, usage: await recordReceiptScan(quotaDay(), { limit: err.limit, perDay: err.perDay, counted: false }) })
+      }
+      return answer(400, { error: err?.message ?? String(err) })
     }
   }
 
@@ -1924,7 +1960,7 @@ const handleRequest = async (req, res) => {
     const { fatsecretAuth: _fatsecretAuthOmitted, ...storeForClient } = store
 
     res.writeHead(200, { ...cors, 'content-type': 'application/json' })
-    return res.end(JSON.stringify({ ...storeForClient, financeCatalog: buildCatalog(store.categories), assets, events, latestHealth, calendarNames, calendarColors, marketPulse, didupVerifiche, didupCompiti, nutritionToday, automations, reviewWeek, fatsecretConnected: !!fatsecretAuth }))
+    return res.end(JSON.stringify({ ...storeForClient, budget: summarizeBudget(store), fiscal: summarizeFiscal(store, { assets }), financeCatalog: buildCatalog(store.categories), assets, events, latestHealth, calendarNames, calendarColors, marketPulse, didupVerifiche, didupCompiti, nutritionToday, automations, reviewWeek, fatsecretConnected: !!fatsecretAuth }))
   }
 
   // --- LifeOS pages, session-gated ----------------------------------------

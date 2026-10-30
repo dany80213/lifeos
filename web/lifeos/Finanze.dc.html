@@ -105,9 +105,12 @@
       <div style="{{ styles.segToggle }}">
         <div style="{{ tabPill.overviewStyle }}" onClick="{{ tabPill.selectOverview }}">Panoramica</div>
         <div style="{{ tabPill.investStyle }}" onClick="{{ tabPill.selectInvest }}">Investimenti</div>
+        <div style="{{ tabPill.budgetStyle }}" onClick="{{ tabPill.selectBudget }}">Budget</div>
+        <div style="{{ tabPill.fiscalStyle }}" onClick="{{ tabPill.selectFiscal }}">Fiscale</div>
       </div>
     </div>
 
+    <sc-if value="{{ showHero }}" hint-placeholder-val="{{ true }}">
     <div style="{{ styles.card }}">
       <div style="{{ styles.heroTop }}">
         <div>
@@ -153,6 +156,7 @@
         <span style="{{ chart.periodDeltaStyle }}">{{ chart.periodDeltaText }}</span>
       </div>
     </div>
+    </sc-if>
 
     <sc-if value="{{ isPanoramica }}" hint-placeholder-val="{{ true }}">
     <div style="{{ styles.stateWrap }}">
@@ -382,13 +386,232 @@
         <div style="{{ styles.card }}">
           <div style="{{ styles.cardTitle }}">IMPORTA ESTRATTO CONTO</div>
           <div style="{{ styles.txMeta }}">Scegli il file di BuddyBank (.xls), Revolut (.csv) o Satispay (.xlsx): riconosco la banca, registro i movimenti nel conto giusto e ti chiedo solo quando ho un dubbio.</div>
-          <input type="file" accept=".xls,.xlsx,.csv" multiple style="{{ styles.txInput }}" onChange="{{ importer.onFiles }}"></input>
+          <label style="{{ styles.importFileBtn }}">Scegli file<input type="file" accept=".xls,.xlsx,.csv" multiple style="display:none" onChange="{{ importer.onFiles }}"></input></label>
           <div style="{{ styles.txMeta }}">{{ importer.status }}</div>
           <sc-if value="{{ importer.hasPending }}" hint-placeholder-val="{{ false }}">
             <div style="{{ styles.importPendingBtn }}" onClick="{{ importer.reopen }}">{{ importer.pendingLabel }}</div>
           </sc-if>
         </div>
       </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isBudget }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.stateWrap }}">
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">BUDGET DI {{ budget.monthLabel }}</div>
+        <div style="{{ styles.bBigRow }}">
+          <div style="{{ styles.liqBig }}">{{ budget.spentLabel }}</div>
+          <div style="{{ styles.bBigSub }}">{{ budget.ofLabel }}</div>
+        </div>
+        <sc-if value="{{ budget.hasLimits }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ styles.bTrack }}"><div style="{{ budget.totalFill }}"></div></div>
+        </sc-if>
+        <div style="{{ styles.bStats }}" class="lo-grid-2">
+          <sc-for list="{{ budget.stats }}" as="st" hint-placeholder-count="4">
+            <div style="{{ styles.bStat }}">
+              <div style="{{ styles.bStatLabel }}">{{ st.label }}</div>
+              <div style="{{ st.valStyle }}">{{ st.value }}</div>
+              <div style="{{ styles.txMeta }}">{{ st.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">CATEGORIE DEL MESE</div>
+          <sc-if value="{{ budget.noCategories }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ styles.txMeta }}">Ancora nessuna spesa questo mese e nessun limite. Aggiungi un limite qui sotto oppure importa un estratto conto.</div>
+          </sc-if>
+          <div style="{{ styles.bList }}">
+            <sc-for list="{{ budget.categories }}" as="bc" hint-placeholder-count="5">
+              <div style="{{ styles.bRow }}">
+                <div style="{{ styles.bRowHead }}">
+                  <div style="{{ styles.bEmoji }}">{{ bc.emoji }}</div>
+                  <div style="{{ styles.bName }}">{{ bc.name }}</div>
+                  <div style="{{ bc.amtStyle }}">{{ bc.amountLabel }}</div>
+                  <div style="{{ styles.bLimitBtn }}" onClick="{{ bc.edit }}" title="Cambia il limite">{{ bc.limitLabel }}</div>
+                </div>
+                <sc-if value="{{ bc.hasLimit }}" hint-placeholder-val="{{ true }}">
+                  <div style="{{ styles.bTrack }}"><div style="{{ bc.fill }}"></div></div>
+                </sc-if>
+                <div style="{{ styles.txMeta }}">{{ bc.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.bAddRow }}">
+            <select style="{{ styles.txSelect }}" value="{{ budgetForm.category }}" onChange="{{ budgetForm.onCategory }}">
+              <sc-for list="{{ budgetForm.options }}" as="bo" hint-placeholder-count="8">
+                <option value="{{ bo.value }}">{{ bo.label }}</option>
+              </sc-for>
+            </select>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Limite € al mese" value="{{ budgetForm.amount }}" onChange="{{ budgetForm.onAmount }}"></input>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ budgetForm.add }}">+</div>
+          </div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">PREVISIONE</div>
+          <div style="{{ styles.liqBig }}">{{ budget.forecastBig }}</div>
+          <div style="{{ styles.txMeta }}">{{ budget.forecastNote }}</div>
+          <div style="{{ styles.liqSplit }}">
+            <sc-for list="{{ budget.forecastRows }}" as="fr" hint-placeholder-count="4">
+              <div style="{{ styles.liqSplitRow }}">
+                <div style="{{ styles.liqSplitLabel }}">{{ fr.label }}</div>
+                <div style="{{ styles.liqSplitVal }}">{{ fr.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.cardTitle }}">FONDO EMERGENZA</div>
+          <div style="{{ styles.liqBig }}">{{ budget.emergencyBig }}</div>
+          <div style="{{ styles.txMeta }}">{{ budget.emergencyNote }}</div>
+        </div>
+      </div>
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">OBIETTIVI DI RISPARMIO</div>
+        <sc-if value="{{ budget.noGoals }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ styles.txMeta }}">Nessun obiettivo. Aggiungine uno: ti dico quanto mettere da parte ogni mese per arrivarci in tempo.</div>
+        </sc-if>
+        <div style="{{ styles.bList }}">
+          <sc-for list="{{ budget.goals }}" as="g" hint-placeholder-count="2">
+            <div style="{{ styles.bRow }}">
+              <div style="{{ styles.bRowHead }}">
+                <div style="{{ styles.bEmoji }}">{{ g.emoji }}</div>
+                <div style="{{ styles.bName }}">{{ g.name }}</div>
+                <div style="{{ styles.liqSplitVal }}">{{ g.amountLabel }}</div>
+                <div style="{{ styles.bLimitBtn }}" onClick="{{ g.deposit }}" title="Aggiungi o togli dei soldi">Versa</div>
+                <div style="{{ styles.rowDeleteBtn }}" onClick="{{ g.remove }}" title="Elimina">×</div>
+              </div>
+              <div style="{{ styles.bTrack }}"><div style="{{ g.fill }}"></div></div>
+              <div style="{{ styles.txMeta }}">{{ g.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="{{ styles.bGoalForm }}" class="lo-grid">
+          <input style="{{ styles.txInput }}" placeholder="Obiettivo (es. Viaggio)" value="{{ goalForm.name }}" onChange="{{ goalForm.onName }}"></input>
+          <input style="{{ styles.txInput }}" type="number" placeholder="Da raggiungere €" value="{{ goalForm.target }}" onChange="{{ goalForm.onTarget }}"></input>
+          <input style="{{ styles.txInput }}" type="date" title="Entro il" value="{{ goalForm.deadline }}" onChange="{{ goalForm.onDeadline }}"></input>
+          <div style="{{ styles.txAddBtn }}" onClick="{{ goalForm.add }}">+</div>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isFiscale }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ styles.stateWrap }}">
+
+      <div style="{{ styles.card }}">
+        <div style="{{ styles.cardTitle }}">STIME FISCALI</div>
+        <div style="{{ styles.txMeta }}">{{ fiscal.disclaimer }}</div>
+      </div>
+
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">730 · SPESE DETRAIBILI {{ fiscal.expensesYear }}</div>
+          <div style="{{ styles.bList }}">
+            <sc-for list="{{ fiscal.deductions }}" as="dd" hint-placeholder-count="4">
+              <div style="{{ styles.bRow }}">
+                <div style="{{ styles.bRowHead }}">
+                  <div style="{{ styles.bName }}">{{ dd.label }}</div>
+                  <div style="{{ styles.liqSplitVal }}">{{ dd.spentLabel }}</div>
+                  <div style="{{ dd.detStyle }}">{{ dd.detLabel }}</div>
+                </div>
+                <div style="{{ styles.txMeta }}">{{ dd.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.liqSplit }}">
+            <sc-for list="{{ fiscal.taxRows }}" as="tr" hint-placeholder-count="5">
+              <div style="{{ styles.liqSplitRow }}">
+                <div style="{{ styles.liqSplitLabel }}">{{ tr.label }}</div>
+                <div style="{{ tr.valStyle }}">{{ tr.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.txMeta }}">{{ fiscal.taxNote }}</div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">ISEE STIMATO</div>
+          <div style="{{ styles.liqBig }}">{{ fiscal.iseeBig }}</div>
+          <div style="{{ styles.txMeta }}">{{ fiscal.iseeNote }}</div>
+          <div style="{{ styles.liqSplit }}">
+            <sc-for list="{{ fiscal.iseeRows }}" as="ir" hint-placeholder-count="7">
+              <div style="{{ styles.liqSplitRow }}">
+                <div style="{{ styles.liqSplitLabel }}">{{ ir.label }}</div>
+                <div style="{{ styles.liqSplitVal }}">{{ ir.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ fiscal.missing }}" as="ms" hint-placeholder-count="2">
+            <div style="{{ styles.fiscalWarn }}">{{ ms.text }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="{{ styles.rowAccounts }}" class="lo-grid">
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">NUCLEO E REDDITO</div>
+          <div style="{{ styles.fiscalGrid }}" class="lo-grid-2">
+            <sc-for list="{{ fiscalForm.fields }}" as="ff" hint-placeholder-count="8">
+              <label style="{{ styles.fiscalField }}">
+                <span style="{{ styles.bStatLabel }}">{{ ff.label }}</span>
+                <input style="{{ styles.txInput }}" type="number" value="{{ ff.value }}" onChange="{{ ff.onChange }}"></input>
+              </label>
+            </sc-for>
+            <label style="{{ styles.fiscalField }}">
+              <span style="{{ styles.bStatLabel }}">LAVORO</span>
+              <select style="{{ styles.txSelect }}" value="{{ fiscalForm.employee }}" onChange="{{ fiscalForm.onEmployee }}">
+                <option value="si">Dipendente</option>
+                <option value="no">Autonomo / altro</option>
+              </select>
+            </label>
+            <label style="{{ styles.fiscalField }}">
+              <span style="{{ styles.bStatLabel }}">ENTRAMBI I GENITORI LAVORANO</span>
+              <select style="{{ styles.txSelect }}" value="{{ fiscalForm.bothWork }}" onChange="{{ fiscalForm.onBothWork }}">
+                <option value="no">No</option>
+                <option value="si">Sì</option>
+              </select>
+            </label>
+          </div>
+          <div style="{{ styles.importFileBtn }}" onClick="{{ fiscalForm.save }}">{{ fiscalForm.saveLabel }}</div>
+        </div>
+
+        <div style="{{ styles.card }}">
+          <div style="{{ styles.cardTitle }}">IMMOBILI</div>
+          <sc-if value="{{ fiscal.noProperties }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ styles.txMeta }}">Nessun immobile registrato. Servono per l'ISEE: valore ai fini IMU, quota posseduta e mutuo residuo al 31/12.</div>
+          </sc-if>
+          <div style="{{ styles.bList }}">
+            <sc-for list="{{ fiscal.properties }}" as="pp" hint-placeholder-count="2">
+              <div style="{{ styles.bRow }}">
+                <div style="{{ styles.bRowHead }}">
+                  <div style="{{ styles.bName }}">{{ pp.name }}</div>
+                  <div style="{{ styles.liqSplitVal }}">{{ pp.valueLabel }}</div>
+                  <div style="{{ styles.rowDeleteBtn }}" onClick="{{ pp.remove }}" title="Elimina">×</div>
+                </div>
+                <div style="{{ styles.txMeta }}">{{ pp.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="{{ styles.fiscalGrid }}" class="lo-grid-2">
+            <input style="{{ styles.txInput }}" placeholder="Nome (es. Casa)" value="{{ propertyForm.name }}" onChange="{{ propertyForm.onName }}"></input>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Valore IMU €" value="{{ propertyForm.value }}" onChange="{{ propertyForm.onValue }}"></input>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Quota % (100)" value="{{ propertyForm.share }}" onChange="{{ propertyForm.onShare }}"></input>
+            <input style="{{ styles.txInput }}" type="number" placeholder="Mutuo residuo €" value="{{ propertyForm.mortgage }}" onChange="{{ propertyForm.onMortgage }}"></input>
+            <select style="{{ styles.txSelect }}" value="{{ propertyForm.main }}" onChange="{{ propertyForm.onMain }}">
+              <option value="no">Altro immobile</option>
+              <option value="si">Abitazione principale</option>
+            </select>
+            <div style="{{ styles.txAddBtn }}" onClick="{{ propertyForm.add }}">+</div>
+          </div>
+        </div>
+      </div>
+
     </div>
     </sc-if>
 
@@ -758,6 +981,8 @@ class Component extends DCLogic {
     newAssetError: null,
     realTransactions: [],
     friendTx: [], pendingImports: [], importStatus: '', questionDismissed: false, expandedFriend: null,
+    fiscal: null, fiscalDraft: null, fiscalSaved: false, newProperty: { name: '', value: '', share: '', mortgage: '', main: 'no' },
+    budget: null, newBudget: { category: '', amount: '' }, newGoal: { name: '', target: '', deadline: '' },
     recurringBuys: [],
     newRecurring: { name: '', symbol: '', assetClass: 'crypto', amountEur: '', frequency: 'monthly' },
     newRecurringError: null,
@@ -778,6 +1003,7 @@ class Component extends DCLogic {
         transactions: (data.transactions || []).map(r => this.txView(r, (data.financeCatalog || { categories: [] }).categories)).sort((a, b) => b.ts - a.ts),
         realTransactions: data.transactions || [],
         friendTx: data.friendTx || [], pendingImports: data.pendingImports || [],
+        budget: data.budget || null, fiscal: data.fiscal || null,
       };
       this.setState(patch);
     }).catch(() => {});
@@ -993,6 +1219,67 @@ class Component extends DCLogic {
     }));
   };
 
+  // --- budget -----------------------------------------------------------
+  setBudgetLimit = (category, amount) =>
+    window.LifeOSJarvis.financeOp('budgets', 'add', { data: { category, amount } }).then(() => this.reloadFinance()).catch(err => window.alert(err.message));
+  editBudgetLimit = (category, current) => {
+    const v = window.prompt('Limite mensile per "' + category + '" in € (0 per toglierlo):', current ? String(current) : '');
+    if (v === null) return;
+    this.setBudgetLimit(category, parseFloat(String(v).replace(',', '.')) || 0);
+  };
+  addBudgetRow = () => {
+    const f = this.state.newBudget;
+    const category = f.category || (this.categoriesFor('spesa')[0] || {}).name;
+    const amount = parseFloat(String(f.amount).replace(',', '.'));
+    if (!category || !(amount > 0)) return;
+    this.setBudgetLimit(category, amount);
+    this.setState({ newBudget: { category: '', amount: '' } });
+  };
+  addGoalRow = () => {
+    const f = this.state.newGoal;
+    const target = parseFloat(String(f.target).replace(',', '.'));
+    if (!f.name.trim() || !(target > 0)) return;
+    window.LifeOSJarvis.financeOp('goals', 'add', { data: { name: f.name, target, deadline: f.deadline } })
+      .then(() => { this.setState({ newGoal: { name: '', target: '', deadline: '' } }); this.reloadFinance(); })
+      .catch(err => window.alert(err.message));
+  };
+  depositGoal = (g) => {
+    const v = window.prompt('Quanto versi su "' + g.name + '"? (negativo per togliere)', '');
+    const n = v === null ? NaN : parseFloat(String(v).replace(',', '.'));
+    if (!n) return;
+    window.LifeOSJarvis.financeOp('goals', 'update', { id: g.id, data: { saved: Math.max(0, g.saved + n) } }).then(() => this.reloadFinance()).catch(() => {});
+  };
+  removeGoalRow = (g) => {
+    if (!window.confirm('Eliminare l\'obiettivo "' + g.name + '"?')) return;
+    window.LifeOSJarvis.financeOp('goals', 'remove', { id: g.id }).then(() => this.reloadFinance()).catch(() => {});
+  };
+
+  // --- fiscale ----------------------------------------------------------
+  saveFiscal = () => {
+    const d = this.state.fiscalDraft;
+    if (!d) return;
+    const n = (v) => (v === '' || v == null ? '' : parseFloat(String(v).replace(',', '.')) || 0);
+    window.LifeOSJarvis.financeOp('fiscal', 'add', { data: {
+      adults: n(d.adults) || 1, children: n(d.children) || 0, adultChildren: n(d.adultChildren) || 0, childrenOver21: n(d.childrenOver21) || 0, income: n(d.income) || 0, withholdings: n(d.withholdings) || 0,
+      mortgageInterest: n(d.mortgageInterest) || 0, donations: n(d.donations) || 0, mobiliare: n(d.mobiliare),
+      employee: d.employee !== 'no', bothWork: d.bothWork === 'si',
+    } }).then(() => { this.setState({ fiscalDraft: null, fiscalSaved: true }); this.reloadFinance(); setTimeout(() => this.setState({ fiscalSaved: false }), 2500); })
+      .catch(err => window.alert(err.message));
+  };
+  addPropertyRow = () => {
+    const f = this.state.newProperty;
+    const value = parseFloat(String(f.value).replace(',', '.'));
+    if (!f.name.trim() || !(value > 0)) return;
+    window.LifeOSJarvis.financeOp('properties', 'add', { data: {
+      name: f.name, value, share: parseFloat(f.share) || 100, mortgage: parseFloat(f.mortgage) || 0, main: f.main === 'si',
+    } }).then(() => { this.setState({ newProperty: { name: '', value: '', share: '', mortgage: '', main: 'no' } }); this.reloadFinance(); })
+      .catch(err => window.alert(err.message));
+  };
+  removePropertyRow = (p) => {
+    if (!window.confirm('Eliminare "' + p.name + '"?')) return;
+    window.LifeOSJarvis.financeOp('properties', 'remove', { id: p.id }).then(() => this.reloadFinance()).catch(() => {});
+  };
+
   // --- statement import -------------------------------------------------
   reloadFinance = () => window.LifeOSJarvis.fetchData().then(data => {
     const cats = (data.financeCatalog || { categories: [] }).categories;
@@ -1001,6 +1288,7 @@ class Component extends DCLogic {
       transactions: (data.transactions || []).map(r => this.txView(r, cats)).sort((a, b) => b.ts - a.ts),
       realTransactions: data.transactions || [],
       friendTx: data.friendTx || [], pendingImports: data.pendingImports || [],
+      budget: data.budget || null, fiscal: data.fiscal || null,
     });
   }).catch(() => {});
   importFiles = async (e) => {
@@ -1044,6 +1332,139 @@ class Component extends DCLogic {
     const fmtEur2 = (n) => n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
     const friendGroups = {};
     s.friendTx.forEach(r => { (friendGroups[r.friend.toLowerCase()] = friendGroups[r.friend.toLowerCase()] || []).push(r); });
+    // Budget: the numbers come from the bridge (lifeos-budget.mjs); this only dresses them up.
+    const MONTHS_IT = ['GENNAIO', 'FEBBRAIO', 'MARZO', 'APRILE', 'MAGGIO', 'GIUGNO', 'LUGLIO', 'AGOSTO', 'SETTEMBRE', 'OTTOBRE', 'NOVEMBRE', 'DICEMBRE'];
+    const bd = s.budget;
+    const statusColor = (st) => st === 'over' ? t.red : st === 'warn' ? 'oklch(78% 0.16 75)' : t.green;
+    const fill = (pct, st) => ({ height: '100%', width: Math.min(100, Math.round((pct || 0) * 100)) + '%', borderRadius: 999, background: statusColor(st), transition: 'width 0.4s ease' });
+    const fmtDay = (iso) => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const budget = (() => {
+      if (!bd) return { monthLabel: '', spentLabel: '€ 0', ofLabel: '', hasLimits: false, totalFill: {}, stats: [], categories: [], noCategories: true, forecastBig: '', forecastNote: '', forecastRows: [], emergencyBig: '', emergencyNote: '', goals: [], noGoals: true };
+      const monthIdx = parseInt(bd.month.slice(5), 10) - 1;
+      const rate = bd.savingsRate;
+      const f = bd.forecast;
+      const delta = bd.prevSpent > 0 ? (bd.spent - bd.prevSpent) / bd.prevSpent : null;
+      return {
+        monthLabel: MONTHS_IT[monthIdx] + ' ' + bd.month.slice(0, 4),
+        spentLabel: fmtEur2(bd.spentOnLimited || 0),
+        ofLabel: bd.totalLimit > 0 ? 'di ' + fmtEur2(bd.totalLimit) + ' · restano ' + fmtEur2(Math.max(0, bd.remaining)) : 'nelle categorie con un limite',
+        hasLimits: bd.totalLimit > 0,
+        totalFill: fill(bd.totalLimit > 0 ? bd.spentOnLimited / bd.totalLimit : 0, bd.status),
+        stats: [
+          { label: 'ENTRATE', value: fmtEur2(bd.income), valStyle: { fontSize: 20, fontWeight: 700, color: t.green }, note: bd.prevIncome ? 'mese scorso ' + fmtEur2(bd.prevIncome) : '' },
+          { label: 'SPESE', value: fmtEur2(bd.spent), valStyle: { fontSize: 20, fontWeight: 700, color: t.text1 }, note: delta == null ? '' : (delta >= 0 ? '+' : '−') + Math.abs(Math.round(delta * 100)) + '% sul mese scorso' },
+          { label: 'RISPARMIO', value: (bd.saved < 0 ? '−' : '') + fmtEur2(Math.abs(bd.saved)), valStyle: { fontSize: 20, fontWeight: 700, color: bd.saved < 0 ? t.red : t.text1 }, note: rate == null ? 'nessuna entrata registrata' : Math.round(rate * 100) + '% delle entrate' },
+          { label: 'MEDIA SPESE', value: bd.avgSpent ? fmtEur2(bd.avgSpent) : '—', valStyle: { fontSize: 20, fontWeight: 700, color: t.text1 }, note: 'al mese, ultimi mesi chiusi' },
+        ],
+        noCategories: bd.categories.length === 0,
+        categories: bd.categories.map(c => ({
+          emoji: c.emoji, name: c.name, hasLimit: c.limit != null,
+          amountLabel: fmtEur2(c.spent),
+          amtStyle: { fontSize: 13.5, fontWeight: 600, color: c.status === 'free' ? t.text1 : statusColor(c.status) },
+          limitLabel: c.limit != null ? 'di ' + fmtEur2(c.limit) : 'Imposta limite',
+          fill: fill(c.pct, c.status),
+          note: [c.limit != null ? (c.spent > c.limit ? 'oltre di ' + fmtEur2(c.spent - c.limit) : 'restano ' + fmtEur2(c.limit - c.spent)) : null, c.prev ? 'mese scorso ' + fmtEur2(c.prev) : null, c.avg ? 'media ' + fmtEur2(c.avg) : null].filter(Boolean).join(' · '),
+          edit: () => this.editBudgetLimit(c.name, c.limit),
+        })),
+        forecastBig: fmtEur2(f.projectedSpent),
+        forecastNote: 'stima delle spese a fine mese, al ritmo di ' + fmtEur2(f.dailyPace) + ' al giorno (stima, non una certezza)' + (f.overBudget ? ' — a questo ritmo sfori il budget' : ''),
+        forecastRows: [
+          { label: 'Puoi spendere al giorno', value: f.dailyAllowance == null ? 'imposta dei limiti' : fmtEur2(f.dailyAllowance) },
+          { label: 'Giorni rimasti', value: String(bd.daysLeft) },
+          { label: 'Risparmio previsto', value: (f.projectedSaved < 0 ? '−' : '') + fmtEur2(Math.abs(f.projectedSaved)) },
+        ],
+        emergencyBig: bd.emergency.months == null ? '—' : bd.emergency.months.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' mesi',
+        emergencyNote: bd.emergency.months == null ? 'servono delle spese registrate' : fmtEur2(bd.emergency.liquidity) + ' di liquidità coprono le spese di ' + bd.emergency.months.toLocaleString('it-IT', { maximumFractionDigits: 1 }) + ' mesi (' + fmtEur2(bd.emergency.monthlyBase) + ' al mese). Una buona soglia è 3-6.',
+        noGoals: bd.goals.length === 0,
+        goals: bd.goals.map(g => ({
+          emoji: g.emoji, name: g.name, amountLabel: fmtEur2(g.saved) + ' / ' + fmtEur2(g.target),
+          fill: fill(g.pct, g.done ? 'ok' : g.late ? 'over' : 'ok'),
+          note: g.done ? 'Obiettivo raggiunto' : g.deadline ? (g.late ? 'Scaduto il ' + fmtDay(g.deadline) + ' · mancano ' + fmtEur2(g.target - g.saved) : 'Entro il ' + fmtDay(g.deadline) + ' · metti da parte ' + fmtEur2(g.monthlyNeeded) + ' al mese per ' + g.monthsLeft + ' ' + (g.monthsLeft === 1 ? 'mese' : 'mesi')) : 'Mancano ' + fmtEur2(g.target - g.saved) + ' · nessuna scadenza',
+          deposit: () => this.depositGoal(g), remove: () => this.removeGoalRow(g),
+        })),
+      };
+    })();
+    const budgetForm = {
+      category: s.newBudget.category || (this.categoriesFor('spesa')[0] || {}).name || '',
+      options: this.categoriesFor('spesa').map(c => ({ value: c.name, label: (c.emoji ? c.emoji + ' ' : '') + c.name })),
+      onCategory: (e) => this.setState(st => ({ newBudget: { ...st.newBudget, category: e.target.value } })),
+      amount: s.newBudget.amount, onAmount: (e) => this.setState(st => ({ newBudget: { ...st.newBudget, amount: e.target.value } })),
+      add: this.addBudgetRow,
+    };
+    const goalForm = {
+      name: s.newGoal.name, onName: (e) => this.setState(st => ({ newGoal: { ...st.newGoal, name: e.target.value } })),
+      target: s.newGoal.target, onTarget: (e) => this.setState(st => ({ newGoal: { ...st.newGoal, target: e.target.value } })),
+      deadline: s.newGoal.deadline, onDeadline: (e) => this.setState(st => ({ newGoal: { ...st.newGoal, deadline: e.target.value } })),
+      add: this.addGoalRow,
+    };
+
+    // Fiscale: estimates computed by the bridge (lifeos-fiscal.mjs); the page only lays them out.
+    const fx = s.fiscal;
+    const fiscal = (() => {
+      if (!fx) return { disclaimer: '', expensesYear: '', deductions: [], taxRows: [], taxNote: '', iseeBig: '', iseeNote: '', iseeRows: [], missing: [], properties: [], noProperties: true };
+      const ts = fx.tax, ie = fx.isee, signed = (n) => (n < 0 ? '−' : '') + fmtEur2(Math.abs(n));
+      return {
+        disclaimer: 'Sono stime per ragionare, non una dichiarazione: i dati veri sono la tua CU, le ricevute e quello che compila il CAF. Aliquote e soglie sono quelle in vigore per il ' + ts.year + ' (i dati dell\'ISEE seguono la legge di bilancio 2026) e vanno verificate prima di usarle.',
+        expensesYear: fx.expensesYear,
+        deductions: fx.deductions.map(d => ({
+          label: d.label, spentLabel: fmtEur2(d.spent),
+          detLabel: d.counted ? '→ ' + fmtEur2(d.detraction) : 'da verificare',
+          detStyle: { fontSize: 13.5, fontWeight: 700, color: d.counted ? t.green : t.text3, minWidth: 90, textAlign: 'right' },
+          note: (d.franchise ? 'Franchigia ' + fmtEur2(d.franchise) + '. ' : '') + (d.cap ? 'Tetto ' + fmtEur2(d.cap) + '. ' : '') + d.note,
+        })),
+        taxRows: [
+          { label: 'Reddito complessivo', value: fmtEur2(ts.income), valStyle: { color: t.text1, fontWeight: 600 } },
+          { label: 'IRPEF lorda', value: fmtEur2(ts.grossTax), valStyle: { color: t.text1, fontWeight: 600 } },
+          { label: ts.employee ? 'Detrazione lavoro dipendente' : 'Detrazione lavoro (non applicata)', value: '− ' + fmtEur2(ts.workDeduction), valStyle: { color: t.green, fontWeight: 600 } },
+          ...(ts.childDeduction > 0 ? [{ label: 'Detrazione figli a carico (21+)', value: '− ' + fmtEur2(ts.childDeduction), valStyle: { color: t.green, fontWeight: 600 } }] : []),
+          { label: 'Detrazioni al 19%', value: '− ' + fmtEur2(ts.deductions19), valStyle: { color: t.green, fontWeight: 600 } },
+          { label: 'IRPEF netta stimata', value: fmtEur2(ts.netTax), valStyle: { color: t.text1, fontWeight: 800 } },
+          { label: ts.balance == null ? 'Saldo (inserisci le ritenute della CU)' : ts.balance >= 0 ? 'Rimborso stimato' : 'Da versare stimato', value: ts.balance == null ? '—' : fmtEur2(Math.abs(ts.balance)), valStyle: { color: ts.balance == null ? t.text3 : ts.balance >= 0 ? t.green : t.red, fontWeight: 800 } },
+        ],
+        taxNote: 'Prima delle addizionali regionale e comunale, che dipendono da dove abiti. Le detrazioni per i figli sotto i 21 anni non ci sono più: le ha sostituite l\'assegno unico.',
+        iseeBig: fmtEur2(ie.isee),
+        iseeNote: 'ISE ' + fmtEur2(ie.ise) + ' diviso scala di equivalenza ' + ie.scale.toLocaleString('it-IT') + ' (' + fx.household.size + ' persone, ' + fx.household.minors + ' minorenni). Riferito al ' + ie.referenceYear + '.',
+        iseeRows: [
+          { label: 'Reddito (ISR)', value: fmtEur2(ie.isr) },
+          { label: 'Patrimonio mobiliare' + (ie.mobiliare.estimated ? ' (saldi di oggi)' : ''), value: fmtEur2(ie.mobiliare.value) },
+          { label: 'Franchigia mobiliare', value: '− ' + fmtEur2(ie.mobiliare.franchise) },
+          { label: 'Patrimonio immobiliare contato', value: fmtEur2(ie.immobiliare.isp) },
+          { label: 'Franchigia prima casa', value: fmtEur2(ie.immobiliare.homeFranchise) },
+          { label: 'Patrimonio (ISP) × 20%', value: fmtEur2(ie.isp * 0.2) },
+        ],
+        missing: ie.missing.map(text => ({ text })),
+        noProperties: ie.immobiliare.items.length === 0,
+        properties: ie.immobiliare.items.map(p => ({
+          name: p.name + (p.main ? ' · abitazione principale' : ''), valueLabel: fmtEur2(p.value),
+          note: 'mutuo residuo ' + fmtEur2(p.mortgage) + ' · patrimonio ' + fmtEur2(p.equity) + ' · conta per l\'ISEE ' + fmtEur2(p.counted),
+          remove: () => this.removePropertyRow(p),
+        })),
+      };
+    })();
+    const fd = s.fiscalDraft || (fx ? {
+      adults: fx.household.adults, children: fx.household.children, adultChildren: fx.household.adultChildren, childrenOver21: fx.household.childrenOver21, income: fx.settings.income, withholdings: fx.settings.withholdings,
+      mobiliare: fx.settings.mobiliare == null ? '' : fx.settings.mobiliare, mortgageInterest: fx.settings.mortgageInterest, donations: fx.settings.donations,
+      employee: fx.settings.employee ? 'si' : 'no', bothWork: fx.settings.bothWork ? 'si' : 'no',
+    } : null);
+    const setDraft = (k, v) => this.setState({ fiscalDraft: { ...fd, [k]: v } });
+    const fiscalForm = {
+      fields: fd ? [
+        ['adults', 'ADULTI NEL NUCLEO'], ['children', 'FIGLI (TUTTI)'], ['adultChildren', 'DI CUI MAGGIORENNI'], ['childrenOver21', 'DI CUI CON 21 ANNI O PIÙ'], ['income', 'REDDITO COMPLESSIVO € / ANNO'], ['withholdings', 'RITENUTE DELLA CU €'],
+        ['mobiliare', 'PATRIMONIO MOBILIARE AL 31/12 €'], ['mortgageInterest', 'INTERESSI MUTUO PAGATI €'], ['donations', 'EROGAZIONI LIBERALI €'],
+      ].map(([k, label]) => ({ label, value: fd[k], onChange: (e) => setDraft(k, e.target.value) })) : [],
+      employee: fd ? fd.employee : 'si', onEmployee: (e) => setDraft('employee', e.target.value),
+      bothWork: fd ? fd.bothWork : 'no', onBothWork: (e) => setDraft('bothWork', e.target.value),
+      save: this.saveFiscal, saveLabel: s.fiscalSaved ? 'Salvato ✓' : 'Salva e ricalcola',
+    };
+    const propertyForm = {
+      name: s.newProperty.name, onName: (e) => this.setState(st => ({ newProperty: { ...st.newProperty, name: e.target.value } })),
+      value: s.newProperty.value, onValue: (e) => this.setState(st => ({ newProperty: { ...st.newProperty, value: e.target.value } })),
+      share: s.newProperty.share, onShare: (e) => this.setState(st => ({ newProperty: { ...st.newProperty, share: e.target.value } })),
+      mortgage: s.newProperty.mortgage, onMortgage: (e) => this.setState(st => ({ newProperty: { ...st.newProperty, mortgage: e.target.value } })),
+      main: s.newProperty.main, onMain: (e) => this.setState(st => ({ newProperty: { ...st.newProperty, main: e.target.value } })),
+      add: this.addPropertyRow,
+    };
+
     const friends = {
       isEmpty: s.friendTx.length === 0,
       // net = what they owe you: what you sent them minus what they sent you.
@@ -1091,6 +1512,9 @@ class Component extends DCLogic {
 
     const isPanoramica = s.activeTab === 'panoramica';
     const isInvestimenti = s.activeTab === 'investimenti';
+    const isBudget = s.activeTab === 'budget';
+    const isFiscale = s.activeTab === 'fiscale';
+    const showHero = !isBudget && !isFiscale;
 
     const chip = (price, changePct) => {
       const positive = changePct >= 0;
@@ -1163,7 +1587,7 @@ class Component extends DCLogic {
 
       stateWrap: { display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.45s ease' },
       netWorthNote: { fontSize: 12.5, color: t.text3, textAlign: 'right', marginTop: -8 },
-      rowAccounts: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 },
+      rowAccounts: { display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 24 },
       rowAlloc: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 },
 
       accountList: { display: 'flex', flexDirection: 'column', gap: 4 },
@@ -1270,6 +1694,24 @@ class Component extends DCLogic {
       txCategory: { fontSize: 13.5, fontWeight: 600, color: t.text1 },
       txMeta: { fontSize: 12, color: t.text3, marginTop: 2 },
 
+      importFileBtn: { padding: '10px 14px', borderRadius: 10, background: t.accent, color: 'white', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'center', display: 'block' },
+      bBigRow: { display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' },
+      bBigSub: { fontSize: 13.5, color: t.text2 },
+      bTrack: { height: 8, borderRadius: 999, background: t.glassBgSoft, overflow: 'hidden' },
+      bStats: { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 },
+      bStat: { display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', borderRadius: 12, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}` },
+      bStatLabel: { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: t.text3 },
+      bList: { display: 'flex', flexDirection: 'column', gap: 14 },
+      bRow: { display: 'flex', flexDirection: 'column', gap: 6 },
+      bRowHead: { display: 'flex', alignItems: 'center', gap: 10 },
+      bEmoji: { fontSize: 18, width: 26, textAlign: 'center', flexShrink: 0 },
+      bName: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      bLimitBtn: { fontSize: 12.5, fontWeight: 600, color: t.accent, cursor: 'pointer', whiteSpace: 'nowrap' },
+      bAddRow: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) auto', gap: 8, marginTop: 4 },
+      bGoalForm: { display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: 8 },
+      fiscalGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 },
+      fiscalField: { display: 'flex', flexDirection: 'column', gap: 5 },
+      fiscalWarn: { fontSize: 12.5, color: 'oklch(78% 0.16 75)', padding: '8px 10px', borderRadius: 10, background: t.glassBgSoft, border: `1px solid ${t.glassBorder}` },
       importPendingBtn: { padding: '10px 14px', borderRadius: 10, background: t.accent, color: 'white', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'center' },
       modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: 16 },
       modalCard: { ...glass, borderRadius: 18, padding: 24, display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560, width: '100%', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', color: t.text1, background: t.dark ? 'rgb(28,30,40)' : 'rgb(250,251,253)' },
@@ -1308,6 +1750,10 @@ class Component extends DCLogic {
       investStyle: { ...pillBase, background: isInvestimenti ? t.accent : 'transparent', color: isInvestimenti ? 'white' : t.text2 },
       selectOverview: () => this.selectTab('panoramica'),
       selectInvest: () => this.selectTab('investimenti'),
+      budgetStyle: { ...pillBase, background: isBudget ? t.accent : 'transparent', color: isBudget ? 'white' : t.text2 },
+      selectBudget: () => this.selectTab('budget'),
+      fiscalStyle: { ...pillBase, background: isFiscale ? t.accent : 'transparent', color: isFiscale ? 'white' : t.text2 },
+      selectFiscal: () => this.selectTab('fiscale'),
     };
 
     const periodPillBase = { padding: '6px 12px', borderRadius: 6, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease' };
@@ -1646,12 +2092,12 @@ class Component extends DCLogic {
       toggle: this.toggleAiInsight,
     };
 
-    const chatSuggData = isPanoramica
+    const chatSuggData = !isInvestimenti
       ? ['Quanto ho risparmiato questo mese?', 'Registra una spesa', 'Controlla il mercato']
       : ['Analizza il mio portafoglio', 'Rischio e diversificazione', 'Cosa è cambiato questa settimana?'];
     const chatSuggestions = chatSuggData.map(label => ({ label, select: () => this.setState({ chatText: label }) }));
     const chatBar = {
-      placeholder: isPanoramica ? 'Chiedi dei tuoi conti, spese o eventi…' : 'Chiedi dei tuoi investimenti…',
+      placeholder: !isInvestimenti ? 'Chiedi dei tuoi conti, spese o eventi…' : 'Chiedi dei tuoi investimenti…',
       iconStyle: { fontSize: 15, color: t.accent, flexShrink: 0 },
     };
 
@@ -1760,7 +2206,7 @@ class Component extends DCLogic {
       styles, timeStr, dateStr, btc, eunl, toggleTheme: this.toggleTheme,
       friends, importer, question,
       txForm, bankPicker, transactions, monthlyChart, monthlySummary, currentMonthLabel,
-      isPanoramica, isInvestimenti, tabPill,
+      isPanoramica, isInvestimenti, isBudget, isFiscale, showHero, tabPill, budget, budgetForm, goalForm, fiscal, fiscalForm, propertyForm,
       hero, chart, periodPill,
       accountFilters, accounts, liquidity, invested, liabilities,
       allocation, assets, assetSort, investPeriods, multiChart,

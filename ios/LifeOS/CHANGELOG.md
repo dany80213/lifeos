@@ -27,6 +27,36 @@ python3 scripts/bump-version.py patch --fixed "Cosa è stato corretto" --changed
 
 <!-- nuove versioni sotto questa riga -->
 
+## 1.18.0 — 2026-10-30
+
+**Aggiunto**
+- Spesa da scontrino: in Finanze fotografi lo scontrino, Gemini legge negozio, data, totale e categoria e la spesa si conferma nel modulo; il contatore mostra le immagini lette oggi
+
+**Modificato**
+- Un estratto conto riconosce le spese già inserite da scontrino (stesso importo entro 3 giorni) e non le aggiunge due volte
+
+
+## 1.17.1 — 2026-10-27
+
+**Aggiunto**
+- Fiscale: il nucleo distingue i figli maggiorenni e quelli con 21 anni o più (detrazione a carico), e la maggiorazione ISEE conta solo i minorenni
+
+
+## 1.17.0 — 2026-10-27
+
+**Aggiunto**
+- Finanze: scheda Fiscale con le spese detraibili del 730 (sanitarie, istruzione, assicurazioni, mutuo) e una stima dell'IRPEF
+- Stima dell'ISEE con nucleo familiare, patrimonio mobiliare, immobili e franchigie, con l'elenco di quello che ancora manca
+
+
+## 1.16.0 — 2026-10-27
+
+**Aggiunto**
+- Finanze: scheda Budget con limiti mensili per categoria, barra di avanzamento e avvisi all'80% e al 100%
+- Previsione di fine mese, quanto puoi spendere al giorno e fondo emergenza in mesi di spese
+- Obiettivi di risparmio con scadenza e importo mensile da mettere da parte
+
+
 ## 1.15.0 — 2026-10-27
 
 **Aggiunto**

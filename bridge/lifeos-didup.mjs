@@ -52,6 +52,13 @@ export async function fetchCompiti() {
 // lesson without needing to know each subject's abbreviation.
 const surnameOf = (docente) => (docente || '').trim().split(/\s+/).pop() || ''
 
+/** The test's own time from Argo ("HH:MM"), as local ISO strings like the calendar slots; null when missing or inverted. */
+function argoTimes(v) {
+  const ok = (t) => /^\d{2}:\d{2}$/.test(t || '')
+  if (!ok(v.oraInizio) || !ok(v.oraFine) || v.oraFine <= v.oraInizio) return null
+  return { startIso: `${v.data}T${v.oraInizio}:00`, endIso: `${v.data}T${v.oraFine}:00` }
+}
+
 /**
  * One sync pass: read today's verifiche from DidUp, skip the ones already on
  * the Verifiche calendar or with no identifiable subject/lesson slot, create
@@ -90,20 +97,30 @@ export async function syncVerificheToCalendar() {
     const slot = surname
       ? eventiDelGiorno.find((e) => e.calendar !== VERIFICHE_CALENDAR && e.title.toUpperCase().includes(surname.toUpperCase()))
       : null
-    if (!slot || !slot.startIso || !slot.endIso) {
-      risultati.push({ ...v, esito: `saltata: nessuna lezione di ${v.docente || 'questo docente'} trovata in calendario il ${v.data}` })
-      continue
+    // Orario: prima quello della lezione in calendario; se non c'è, quello che il docente
+    // ha indicato su Argo (assente quando è "00:00"-"00:00", e allora hermes-agent lo lascia vuoto).
+    let startIso = slot?.startIso
+    let endIso = slot?.endIso
+    let fonte = 'calendario'
+    if (!startIso || !endIso) {
+      const argo = argoTimes(v)
+      if (!argo) {
+        risultati.push({ ...v, esito: `saltata: nessuna lezione di ${v.docente || 'questo docente'} in calendario il ${v.data} e nessun orario su Argo` })
+        continue
+      }
+      ;({ startIso, endIso } = argo)
+      fonte = 'Argo'
     }
     try {
       await createEventInCalendar({
         calendarName: VERIFICHE_CALENDAR,
         title: materia,
-        startIso: slot.startIso,
-        endIso: slot.endIso,
+        startIso,
+        endIso,
         location: VERIFICHE_LOCATION,
         notes: v.testo || '',
       })
-      risultati.push({ ...v, esito: `creata ${slot.startIso}–${slot.endIso}` })
+      risultati.push({ ...v, esito: `creata ${startIso}–${endIso} (orario da ${fonte})` })
     } catch (err) {
       risultati.push({ ...v, esito: `errore creazione: ${err.message}` })
     }
